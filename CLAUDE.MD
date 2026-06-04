@@ -634,17 +634,7 @@ import { Button } from '../../../../components/ui/button';
 
 # Tabelas e listagens
 
-Listagens que podem crescer devem possuir:
-
-- Paginação
-- Busca
-- Filtros
-- Ordenação quando fizer sentido
-- Estado via query params
-- Renderização server-side sempre que possível
-- Loading com `Suspense` e `Skeleton`
-- Empty state
-- Error state
+Toda listagem deve ter paginação, busca, filtros, empty state, error state e loading com Skeleton.
 
 Para tabelas complexas, usar:
 
@@ -655,14 +645,240 @@ Não criar tabela complexa manualmente sem necessidade.
 
 ---
 
+# Padrão de listagens: poucos registros (client-side com URL)
+
+Quando a tabela terá poucos registros (ex: equipe, emissor), buscar tudo de uma vez no servidor e deixar o TanStack Table gerenciar filtragem, busca e paginação no client. **Os filtros sempre gerenciam a URL** — independente do volume de dados.
+
+**Estrutura obrigatória:**
+
+```txt
+feature/
+├── page.tsx                  ← server, auth, Suspense
+├── feature-content.tsx       ← server async, busca todos os dados, passa como prop
+├── feature-table.tsx         ← client, TanStack Table com filtros e paginação
+├── feature-columns.tsx       ← definições de colunas (createColumnHelper)
+└── feature-table-skeleton.tsx
+```
+
+**`page.tsx`** — server, só auth + Suspense:
+
+```tsx
+const EquipePage = async () => {
+    await requirePermission(['SUPER_ADMIN']);
+    return (
+        <div className="space-y-6">
+            <h1>Equipe</h1>
+            <Suspense fallback={<EquipeTableSkeleton />}>
+                <EquipeContent />
+            </Suspense>
+        </div>
+    );
+};
+```
+
+**`feature-content.tsx`** — server async, busca tudo:
+
+```tsx
+export const EquipeContent = async () => {
+    const usuarios = await listarUsuarios();
+    return <EquipeTable usuarios={usuarios} />;
+};
+```
+
+**`feature-columns.tsx`** — definições de colunas separadas:
+
+```tsx
+import { createColumnHelper } from '@tanstack/react-table';
+
+export type UsuarioRow = Pick<Usuario, 'id' | 'nome' | 'role' | 'ativo'>;
+
+const columnHelper = createColumnHelper<UsuarioRow>();
+
+export const equipeColumns = [
+    columnHelper.accessor('nome', { header: 'Nome', cell: (info) => info.getValue() }),
+    // ...
+];
+```
+
+**`feature-table.tsx`** — client, TanStack Table:
+
+```tsx
+'use client';
+
+import {
+    flexRender,
+    getCoreRowModel,
+    getFilteredRowModel,
+    getPaginationRowModel,
+    useReactTable,
+    type ColumnFiltersState,
+    type FilterFn,
+} from '@tanstack/react-table';
+
+export const EquipeTable = ({ usuarios }: { usuarios: UsuarioRow[] }) => {
+    const [globalFilter, setGlobalFilter] = useState('');
+    const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+
+    const table = useReactTable({
+        data: usuarios,
+        columns: equipeColumns,
+        state: { globalFilter, columnFilters },
+        onGlobalFilterChange: setGlobalFilter,
+        onColumnFiltersChange: setColumnFilters,
+        globalFilterFn,
+        getCoreRowModel: getCoreRowModel(),
+        getFilteredRowModel: getFilteredRowModel(),
+        getPaginationRowModel: getPaginationRowModel(),
+        initialState: { pagination: { pageSize: 5 } },
+    });
+
+    // ... filtros, tabela e paginação client-side
+};
+```
+
+**Regras:**
+
+- O server component busca **todos** os registros sem filtros
+- O TanStack Table gerencia busca, filtros por coluna e paginação no client
+- `globalFilterFn` customizado para busca multi-campo
+- `filterFn` por coluna para filtros de select (role, status, etc.)
+- Paginação via `getPaginationRowModel` + `table.previousPage()`/`table.nextPage()`
+- Busca por texto: form submit (não refetch a cada tecla)
+- Selects de filtro: commit imediato via `setColumnFilters`
+
+---
+
+# Padrão de listagens: muitos registros (server-side com useQuery)
+
+Quando a tabela pode acumular muitos registros ao longo do tempo (ex: auditoria, logs), usar paginação e filtragem server-side com `useQuery` + `useSearchParams`.
+
+**Estrutura obrigatória:**
+
+```txt
+feature/
+├── page.tsx                  ← server, auth, Suspense
+├── feature-content.tsx       ← server thin wrapper
+├── feature-filters.tsx       ← client, só UI + router.replace
+├── feature-table.tsx         ← client, useQuery + useSearchParams
+├── feature-columns.tsx       ← definições de colunas
+└── feature-table-skeleton.tsx
+```
+
+**`page.tsx`** — server com Suspense (obrigatório por causa do useSearchParams):
+
+```tsx
+const AuditoriaPage = async () => {
+    await requirePermission(['SUPER_ADMIN']);
+    return (
+        <div className="space-y-6">
+            <h1>Auditoria</h1>
+            <Suspense fallback={<AuditoriaTableSkeleton />}>
+                <AuditoriaContent />
+            </Suspense>
+        </div>
+    );
+};
+```
+
+**`feature-content.tsx`** — server thin wrapper:
+
+```tsx
+export const AuditoriaContent = () => {
+    return (
+        <div className="space-y-4">
+            <AuditoriaFilters />
+            <AuditoriaTable />
+        </div>
+    );
+};
+```
+
+**`feature-filters.tsx`** — client, somente UI e URL:
+
+```tsx
+'use client';
+
+export const AuditoriaFilters = () => {
+    const router = useRouter();
+    const searchParams = useSearchParams();
+
+    const [local, setLocal] = useState({
+        usuario: searchParams.get('usuario') ?? '',
+        acao: searchParams.get('acao') ?? '',
+    });
+
+    const push = (overrides: Partial<typeof local>) => {
+        const next = { ...local, ...overrides };
+        const params = new URLSearchParams();
+        if (next.usuario) params.set('usuario', next.usuario);
+        if (next.acao) params.set('acao', next.acao);
+        router.replace(`?${params.toString()}`);
+    };
+
+    // selects fazem push imediato; texto faz push no submit
+};
+```
+
+**`feature-table.tsx`** — client, useQuery interno:
+
+```tsx
+'use client';
+
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
+
+export const AuditoriaTable = () => {
+    const router = useRouter();
+    const searchParams = useSearchParams();
+
+    const usuario = searchParams.get('usuario') ?? undefined;
+    const page = Number(searchParams.get('page') ?? '1');
+
+    // Todos os hooks antes de qualquer return condicional
+    const items = data?.items ?? [];
+    const total = data?.total ?? 0;
+    const perPage = data?.perPage ?? 15;
+
+    const { data, isLoading } = useQuery({
+        queryKey: ['logs', { usuario, page }],
+        queryFn: () => listarLogs({ usuario, page }),
+        placeholderData: keepPreviousData,
+    });
+
+    const table = useReactTable({
+        data: items,
+        columns: auditoriaColumns,
+        getCoreRowModel: getCoreRowModel(),
+        manualPagination: true,
+        pageCount: Math.ceil(total / perPage),
+    });
+
+    if (isLoading || !data) return <AuditoriaTableSkeleton />;
+
+    // ... renderiza tabela e paginação via router.replace
+};
+```
+
+**Regras:**
+
+- `useQuery` com `placeholderData: keepPreviousData` — mantém dados anteriores visíveis enquanto nova query carrega (sem flash de skeleton a cada troca de filtro)
+- Skeleton só aparece no **primeiro carregamento** (`isLoading && !data`)
+- Filtros atualizam a URL via `router.replace` — filtros persistem no link
+- `AuditoriaFilters` tem dois estados: `local` (o que o usuário digita) e commit para URL (o que a query usa)
+- Paginação via `router.replace` preservando os filtros existentes
+- **NUNCA usar `useSuspenseQuery` com Server Actions** — Server Actions não podem ser chamadas durante SSR inicial
+- Todos os hooks (`useReactTable`, etc.) devem ser chamados **antes** de qualquer `return` condicional (Rules of Hooks)
+- Filtros de texto: commit no submit do formulário; selects: commit imediato
+
+---
+
 # Query params
 
-Filtros, busca e paginação devem ser refletidos na URL.
+Filtros, busca e paginação devem ser refletidos na URL no padrão server-side.
 
 Exemplo:
 
 ```txt
-/solicitacoes?page=1&search=joao&status=pendente
+/auditoria?usuario=joao&acao=LOGIN&page=2
 ```
 
 Isso facilita:
@@ -670,7 +886,151 @@ Isso facilita:
 - Compartilhamento de links
 - Atualização da página sem perder filtros
 - Melhor organização da listagem
-- Integração com Server Components
+
+No padrão client-side (poucos registros), os filtros são gerenciados pelo TanStack Table em memória e não precisam ir para a URL.
+
+---
+
+# Dialogs
+
+Todos os dialogs devem ser auto-contidos com `DialogTrigger asChild`. Nunca controlar `open` por estado externo.
+
+```tsx
+export const MeuDialog = ({ children, dado }: PropsWithChildren<{ dado: Dado }>) => {
+    const [open, setOpen] = useState(false);
+
+    return (
+        <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>{children}</DialogTrigger>
+            <DialogContent>...</DialogContent>
+        </Dialog>
+    );
+};
+
+// Uso:
+<MeuDialog dado={dado}>
+    <Button>Abrir</Button>
+</MeuDialog>;
+```
+
+Quando o dialog estiver dentro de um `DropdownMenu`, usar `onSelect={(e) => e.preventDefault()}` no `DropdownMenuItem` para evitar que o dropdown feche antes do dialog abrir:
+
+```tsx
+<DropdownMenuContent>
+    <MeuDialog dado={dado}>
+        <DropdownMenuItem onSelect={(e) => e.preventDefault()}>Editar</DropdownMenuItem>
+    </MeuDialog>
+</DropdownMenuContent>
+```
+
+---
+
+# revalidatePath vs router.refresh
+
+Usar `revalidatePath` nas **Server Actions** após mutações. Não usar `router.refresh()` no client exceto quando necessário para atualização imediata de dados locais (ex: toggle de status fora de um dialog).
+
+```tsx
+// actions.ts
+export const criarUsuario = async (input: UsuarioInput) => {
+    // ...
+    await prisma.usuario.create({ data: input });
+    revalidatePath('/equipe'); // ← invalida o cache do servidor
+    return { success: true };
+};
+```
+
+O `revalidatePath` garante que a próxima renderização do server component busque dados frescos.
+
+---
+
+# Organização de libs e utils
+
+## Pasta `lib/`
+
+Reservada exclusivamente para **configuração de bibliotecas externas**.
+
+```txt
+src/lib/
+├── prisma.ts      ← instância do PrismaClient
+└── utils.ts       ← utilitários do shadcn/ui (cn)
+```
+
+Não colocar funções auxiliares do negócio em `lib/`.
+
+## Pasta `utils/`
+
+Todas as **funções auxiliares** do projeto devem ficar em `src/utils/`.
+
+```txt
+src/utils/
+├── format-date.ts
+├── build-message.ts
+├── require-permission.ts
+└── ...
+```
+
+Exemplo de função auxiliar:
+
+```ts
+// src/utils/format-date.ts
+export const formatDate = (date: Date | string) => new Date(date).toLocaleDateString('pt-BR');
+```
+
+---
+
+# Configuração do QueryClient
+
+O `QueryClient` deve ser criado **dentro de `useState`** com factory function para garantir uma única instância por montagem do provider.
+
+```tsx
+// src/integrations/react-query.tsx
+'use client';
+
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { type PropsWithChildren, useState } from 'react';
+
+export const ReactQuery = ({ children }: PropsWithChildren) => {
+    const [queryClient] = useState(
+        () =>
+            new QueryClient({
+                defaultOptions: {
+                    queries: {
+                        staleTime: 60 * 1000,
+                        refetchOnWindowFocus: false,
+                    },
+                },
+            })
+    );
+
+    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+};
+```
+
+**Nunca** criar `new QueryClient()` fora do `useState` — isso recria o client a cada re-render, zerando o cache e causando requests duplicadas.
+
+---
+
+# useQuery para polling
+
+Usar `refetchInterval` do `useQuery` no lugar de `setInterval` manual.
+
+```tsx
+const { data } = useQuery({
+    queryKey: ['pendentes-count'],
+    queryFn: contarPendentes,
+    refetchInterval: 8000,
+    refetchIntervalInBackground: false, // pausa quando a aba não está ativa
+});
+```
+
+Para detectar mudanças e reagir (ex: toast), usar `useEffect` com o dado como dependência:
+
+```tsx
+useEffect(() => {
+    if (total === undefined) return;
+    // comparar com ref e exibir toast
+}, [total]);
+```
 
 ---
 
@@ -893,13 +1253,22 @@ Antes de finalizar uma alteração, verificar:
 - Foram usadas arrow functions?
 - Não foi criado botão/input/card/modal manualmente?
 - Não há `any` desnecessário?
-- As listagens grandes possuem busca, filtros e paginação?
-- Os filtros importantes foram para query params?
+- **Listagem com poucos registros**: server busca tudo, TanStack Table gerencia client-side?
+- **Listagem com muitos registros**: useQuery + useSearchParams + paginação server-side?
+- As colunas estão em um arquivo `*-columns.tsx` separado?
+- Os dialogs usam `DialogTrigger asChild` e são auto-contidos?
+- `DropdownMenuItem` dentro de dialog usa `onSelect={(e) => e.preventDefault()}`?
+- Server Actions chamam `revalidatePath` após mutações?
+- O `QueryClient` está configurado com `useState` + factory function?
+- Polling usa `refetchInterval` do `useQuery` (não `setInterval` manual)?
+- Funções auxiliares estão em `src/utils/` (não em `lib/`)?
+- `lib/` contém apenas configuração de libs externas?
+- Todos os hooks são chamados antes de qualquer `return` condicional?
+- `useSuspenseQuery` **não** está sendo usado com Server Actions?
+- Os filtros importantes foram para query params (padrão server-side)?
 - Componentes que buscam dados usam `Suspense`?
 - Foi criado fallback com `Skeleton` do shadcn/ui?
-- Existe `loading.tsx` quando fizer sentido no App Router?
 - O skeleton representa o layout real da tela?
-- Não foi usado apenas texto simples como `Carregando...`?
 - Empty state foi tratado?
 - Error state foi tratado?
 - Success feedback foi tratado?
@@ -915,10 +1284,7 @@ Sempre seguir estes padrões:
 - Client component separado quando necessário
 - shadcn/ui para todos os componentes de interface
 - Nunca inventar `Button`, `Input`, `Card`, `Dialog`, `Table`, etc.
-- Formulários com `Field`
-- React Hook Form
-- Zod
-- `zodResolver`
+- Formulários com `Field`, React Hook Form, Zod, `zodResolver`
 - Validação de formulários no client
 - Server Actions sem validação Zod duplicada, salvo necessidade real
 - Server Actions com validação de autenticação e permissão quando necessário
@@ -926,7 +1292,14 @@ Sempre seguir estes padrões:
 - Loading de submit usando `mutation.isPending`
 - Arrow functions
 - TypeScript sem `any` desnecessário
-- Listagens com filtros, busca, paginação e query params
-- Componentes que buscam dados devem usar `Suspense`
-- Estados de loading devem usar `Skeleton` do shadcn/ui
-- `loading.tsx` deve ser usado quando fizer sentido no App Router
+- **Listagem poucos registros**: server busca tudo → TanStack Table client-side (filtros, busca, paginação em memória)
+- **Listagem muitos registros**: `useQuery` + `useSearchParams` + paginação server-side + `placeholderData: keepPreviousData`
+- Colunas sempre em arquivo `*-columns.tsx` separado
+- Dialogs auto-contidos com `DialogTrigger asChild`
+- `revalidatePath` nas Server Actions após mutações (não `router.refresh()` no client)
+- `QueryClient` com `useState(() => new QueryClient({ defaultOptions: { queries: { staleTime, refetchOnWindowFocus } } }))`
+- Polling com `refetchInterval` do `useQuery`
+- Funções auxiliares em `src/utils/`, libs externas em `src/lib/`
+- Nunca usar `useSuspenseQuery` com Server Actions (erro de SSR)
+- Todos os hooks antes de qualquer `return` condicional
+- Componentes que buscam dados devem usar `Suspense` com `Skeleton` do shadcn/ui

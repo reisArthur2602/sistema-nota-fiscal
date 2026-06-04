@@ -1,31 +1,18 @@
 'use client';
 
-import { zodResolver } from '@hookform/resolvers/zod';
-import { MoreHorizontal, Plus } from 'lucide-react';
+import {
+    flexRender,
+    getCoreRowModel,
+    getFilteredRowModel,
+    getPaginationRowModel,
+    useReactTable,
+    type ColumnFiltersState,
+    type FilterFn,
+} from '@tanstack/react-table';
+import { ChevronLeft, ChevronRight, Plus, Search } from 'lucide-react';
 import { useState } from 'react';
-import { Controller, useForm } from 'react-hook-form';
-import { toast } from 'sonner';
-import { z } from 'zod';
 
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-    Dialog,
-    DialogClose,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from '@/components/ui/dialog';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import {
     Select,
@@ -34,7 +21,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { Spinner } from '@/components/ui/spinner';
 import {
     Table,
     TableBody,
@@ -43,287 +29,206 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { PER_PAGE } from '@/constants';
+import { cn } from '@/lib/utils';
 
-import { Role, Usuario } from '@/generated/prisma/browser';
-import { criarUsuario, editarUsuario, toggleAtivo } from './actions';
+import { equipeColumns, type UsuarioRow } from './equipe-columns';
+import { UsuarioDialog } from './usuario-dialog';
 
-export type UsuarioRow = Pick<Usuario, 'id' | 'nome' | 'usuario' | 'role' | 'ativo'>;
+export type { UsuarioRow };
 
-const roleConfig: Record<Role, { label: string; className: string }> = {
-    SUPER_ADMIN: { label: 'Super Admin', className: '' },
-    RECEPCAO: {
-        label: 'Recepção',
-        className: 'border-border bg-transparent text-muted-foreground',
-    },
-    EMISSOR: {
-        label: 'Emissor',
-        className: 'border-blue-500/20 bg-blue-500/10 text-blue-600 dark:text-blue-400',
-    },
+const globalFilterFn: FilterFn<UsuarioRow> = (row, _columnId, filterValue: string) => {
+    const s = filterValue.toLowerCase();
+    return (
+        row.original.nome.toLowerCase().includes(s) ||
+        row.original.usuario.toLowerCase().includes(s)
+    );
 };
 
-const usuarioSchema = z.object({
-    nome: z.string().min(1, 'Nome é obrigatório.'),
-    usuario: z.string().min(3, 'Usuario deve ter no minimo 3 caracteres.'),
-    senha: z.string().optional(),
-    role: z.enum(['SUPER_ADMIN', 'RECEPCAO', 'EMISSOR']),
-});
+export const EquipeTable = ({ usuarios }: { usuarios: UsuarioRow[] }) => {
+    const [globalFilter, setGlobalFilter] = useState('');
+    const [searchInput, setSearchInput] = useState('');
+    const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 
-type UsuarioFormData = z.infer<typeof usuarioSchema>;
-
-export const EquipeTable = ({ usuarios: inicial }: { usuarios: UsuarioRow[] }) => {
-    const [usuarios, setUsuarios] = useState<UsuarioRow[]>(inicial);
-    const [formAberto, setFormAberto] = useState(false);
-    const [usuarioEditando, setUsuarioEditando] = useState<UsuarioRow | null>(null);
-
-    const form = useForm<UsuarioFormData>({
-        resolver: zodResolver(usuarioSchema),
-        defaultValues: { nome: '', usuario: '', senha: '', role: 'RECEPCAO' },
+    const table = useReactTable({
+        data: usuarios,
+        columns: equipeColumns,
+        state: { globalFilter, columnFilters },
+        onGlobalFilterChange: setGlobalFilter,
+        onColumnFiltersChange: setColumnFilters,
+        globalFilterFn,
+        getCoreRowModel: getCoreRowModel(),
+        getFilteredRowModel: getFilteredRowModel(),
+        getPaginationRowModel: getPaginationRowModel(),
+        initialState: { pagination: { pageSize: PER_PAGE } },
     });
 
-    const abrirCriar = () => {
-        setUsuarioEditando(null);
-        form.reset({ nome: '', usuario: '', senha: '', role: 'RECEPCAO' });
-        setFormAberto(true);
+    const handleSearch = (e: React.SyntheticEvent) => {
+        e.preventDefault();
+        setGlobalFilter(searchInput);
     };
 
-    const abrirEditar = (usuario: UsuarioRow) => {
-        setUsuarioEditando(usuario);
-        form.reset({ nome: usuario.nome, usuario: usuario.usuario, senha: '', role: usuario.role });
-        setFormAberto(true);
-    };
+    const getColumnFilter = (id: string) =>
+        (columnFilters.find((f) => f.id === id)?.value as string) ?? 'todos';
 
-    const handleFormClose = (open: boolean) => {
-        if (!open) {
-            form.reset();
-            setUsuarioEditando(null);
-        }
-        setFormAberto(open);
-    };
+    const setColumnFilter = (id: string, value: string) =>
+        setColumnFilters((prev) => {
+            const sem = prev.filter((f) => f.id !== id);
+            return value === 'todos' ? sem : [...sem, { id, value }];
+        });
 
-    const handleToggleAtivo = async (usuario: UsuarioRow) => {
-        const resultado = await toggleAtivo(usuario.id, !usuario.ativo);
-        if (!resultado.success) {
-            toast.error(resultado.message);
-            return;
-        }
-        setUsuarios((prev) =>
-            prev.map((u) => (u.id === usuario.id ? { ...u, ativo: !u.ativo } : u))
-        );
-        toast.success(resultado.message);
-    };
-
-    const onSubmit = async (data: UsuarioFormData) => {
-        if (!usuarioEditando && (!data.senha || data.senha.length < 6)) {
-            form.setError('senha', { message: 'A senha deve ter no mínimo 6 caracteres.' });
-            return;
-        }
-
-        if (usuarioEditando) {
-            const resultado = await editarUsuario(usuarioEditando.id, data);
-            if (!resultado.success) {
-                toast.error(resultado.message);
-                return;
-            }
-            setUsuarios((prev) =>
-                prev.map((u) =>
-                    u.id === usuarioEditando.id
-                        ? { ...u, nome: data.nome, usuario: data.usuario, role: data.role }
-                        : u
-                )
-            );
-            toast.success(resultado.message);
-        } else {
-            const resultado = await criarUsuario(data);
-            if (!resultado.success) {
-                toast.error(resultado.message);
-                return;
-            }
-            setUsuarios((prev) => [
-                ...prev,
-                {
-                    id: `usr-${Date.now()}`,
-                    nome: data.nome,
-                    usuario: data.usuario,
-                    role: data.role,
-                    ativo: true,
-                },
-            ]);
-            toast.success(resultado.message);
-        }
-
-        form.reset();
-        setFormAberto(false);
-        setUsuarioEditando(null);
-    };
+    const { pageIndex } = table.getState().pagination;
+    const pageSize = table.getState().pagination.pageSize;
+    const totalFiltrado = table.getFilteredRowModel().rows.length;
+    const inicio = pageIndex * pageSize + 1;
+    const fim = Math.min((pageIndex + 1) * pageSize, totalFiltrado);
+    const temFiltro = globalFilter || columnFilters.length > 0;
 
     return (
-        <>
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-semibold tracking-tight">Equipe</h1>
-                    <p className="text-sm text-muted-foreground">
-                        Gerencie os usuários e perfis de acesso
-                    </p>
+        <div className="space-y-4">
+            <div className="flex flex-wrap items-end justify-between gap-2">
+                <div className="flex flex-wrap items-end gap-2">
+                    <form onSubmit={handleSearch} className="flex gap-2">
+                        <Input
+                            placeholder="Buscar por nome ou usuário..."
+                            value={searchInput}
+                            onChange={(e) => setSearchInput(e.target.value)}
+                            className="w-56"
+                        />
+                        <Button type="submit" variant="outline">
+                            <Search className="size-4" />
+                            Buscar
+                        </Button>
+                    </form>
+
+                    <Select
+                        value={getColumnFilter('role')}
+                        onValueChange={(v) => setColumnFilter('role', v)}
+                    >
+                        <SelectTrigger className="w-40">
+                            <SelectValue placeholder="Todos os perfis" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="todos">Todos os perfis</SelectItem>
+                            <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
+                            <SelectItem value="RECEPCAO">Recepção</SelectItem>
+                            <SelectItem value="EMISSOR">Emissor</SelectItem>
+                        </SelectContent>
+                    </Select>
+
+                    <Select
+                        value={getColumnFilter('ativo')}
+                        onValueChange={(v) => setColumnFilter('ativo', v)}
+                    >
+                        <SelectTrigger className="w-36">
+                            <SelectValue placeholder="Situação" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="todos">Todas</SelectItem>
+                            <SelectItem value="ativo">Ativo</SelectItem>
+                            <SelectItem value="inativo">Inativo</SelectItem>
+                        </SelectContent>
+                    </Select>
+
+                    {temFiltro && (
+                        <Button
+                            variant="ghost"
+                            onClick={() => {
+                                setGlobalFilter('');
+                                setSearchInput('');
+                                setColumnFilters([]);
+                            }}
+                        >
+                            Limpar
+                        </Button>
+                    )}
                 </div>
-                <Button onClick={abrirCriar}>
-                    <Plus className="size-4" />
-                    Novo usuário
-                </Button>
+
+                <UsuarioDialog>
+                    <Button>
+                        <Plus className="size-4" />
+                        Novo usuário
+                    </Button>
+                </UsuarioDialog>
             </div>
 
             <div className="overflow-hidden rounded-2xl border bg-card">
                 <Table>
                     <TableHeader>
-                        <TableRow>
-                            <TableHead>Usuário</TableHead>
-                            <TableHead>Perfil</TableHead>
-                            <TableHead>Situação</TableHead>
-                            <TableHead />
-                        </TableRow>
+                        {table.getHeaderGroups().map((headerGroup) => (
+                            <TableRow key={headerGroup.id}>
+                                {headerGroup.headers.map((header) => (
+                                    <TableHead key={header.id}>
+                                        {flexRender(
+                                            header.column.columnDef.header,
+                                            header.getContext(),
+                                        )}
+                                    </TableHead>
+                                ))}
+                            </TableRow>
+                        ))}
                     </TableHeader>
                     <TableBody>
-                        {usuarios.map((u) => {
-                            const role = roleConfig[u.role];
-                            return (
-                                <TableRow key={u.id}>
-                                    <TableCell>
-                                        <p className="font-medium">{u.nome}</p>
-                                        <p className="text-xs text-muted-foreground">
-                                            @{u.usuario}
-                                        </p>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Badge className={role.className}>{role.label}</Badge>
-                                    </TableCell>
-                                    <TableCell>
-                                        {u.ativo ? (
-                                            <Badge className="border-green-500/20 bg-green-500/10 text-green-600 dark:text-green-400">
-                                                Ativo
-                                            </Badge>
-                                        ) : (
-                                            <Badge className="border-border bg-transparent text-muted-foreground">
-                                                Inativo
-                                            </Badge>
-                                        )}
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="icon-sm">
-                                                    <MoreHorizontal className="size-4" />
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                <DropdownMenuItem onClick={() => abrirEditar(u)}>
-                                                    Editar
-                                                </DropdownMenuItem>
-                                                <DropdownMenuSeparator />
-                                                <DropdownMenuItem
-                                                    variant="destructive"
-                                                    onClick={() => handleToggleAtivo(u)}
-                                                >
-                                                    {u.ativo ? 'Desativar' : 'Ativar'}
-                                                </DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    </TableCell>
+                        {table.getRowModel().rows.length === 0 ? (
+                            <TableRow>
+                                <TableCell
+                                    colSpan={equipeColumns.length}
+                                    className="h-24 text-center text-sm text-muted-foreground"
+                                >
+                                    Nenhum usuário encontrado.
+                                </TableCell>
+                            </TableRow>
+                        ) : (
+                            table.getRowModel().rows.map((row) => (
+                                <TableRow key={row.id}>
+                                    {row.getVisibleCells().map((cell) => (
+                                        <TableCell key={cell.id}>
+                                            {flexRender(
+                                                cell.column.columnDef.cell,
+                                                cell.getContext(),
+                                            )}
+                                        </TableCell>
+                                    ))}
                                 </TableRow>
-                            );
-                        })}
+                            ))
+                        )}
                     </TableBody>
                 </Table>
             </div>
 
-            <Dialog open={formAberto} onOpenChange={handleFormClose}>
-                <DialogContent className="sm:max-w-md">
-                    <form onSubmit={form.handleSubmit(onSubmit)}>
-                        <DialogHeader>
-                            <DialogTitle>
-                                {usuarioEditando ? 'Editar usuário' : 'Novo usuário'}
-                            </DialogTitle>
-                            <DialogDescription>
-                                {usuarioEditando
-                                    ? 'Atualize os dados do usuário.'
-                                    : 'Preencha os dados para criar um novo usuário.'}
-                            </DialogDescription>
-                        </DialogHeader>
-
-                        <FieldGroup className="py-4">
-                            <Field>
-                                <FieldLabel htmlFor="nome">Nome</FieldLabel>
-                                <Input
-                                    id="nome"
-                                    placeholder="Nome completo"
-                                    {...form.register('nome')}
-                                />
-                                <FieldError errors={[form.formState.errors.nome]} />
-                            </Field>
-
-                            <Field>
-                                <FieldLabel htmlFor="usuario">Nome de usuario</FieldLabel>
-                                <Input
-                                    id="usuario"
-                                    type="text"
-                                    placeholder="nome.sobrenome"
-                                    {...form.register('usuario')}
-                                />
-                                <FieldError errors={[form.formState.errors.usuario]} />
-                            </Field>
-
-                            <Field>
-                                <FieldLabel htmlFor="senha">Senha</FieldLabel>
-                                <Input
-                                    id="senha"
-                                    type="password"
-                                    placeholder="••••••••"
-                                    {...form.register('senha')}
-                                />
-                                {usuarioEditando && (
-                                    <FieldDescription>
-                                        Deixe em branco para não alterar.
-                                    </FieldDescription>
-                                )}
-                                <FieldError errors={[form.formState.errors.senha]} />
-                            </Field>
-
-                            <Field>
-                                <FieldLabel htmlFor="role">Perfil</FieldLabel>
-                                <Controller
-                                    control={form.control}
-                                    name="role"
-                                    render={({ field }) => (
-                                        <Select value={field.value} onValueChange={field.onChange}>
-                                            <SelectTrigger id="role" className="w-full">
-                                                <SelectValue placeholder="Selecione um perfil" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="SUPER_ADMIN">
-                                                    Super Admin
-                                                </SelectItem>
-                                                <SelectItem value="RECEPCAO">Recepção</SelectItem>
-                                                <SelectItem value="EMISSOR">Emissor</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    )}
-                                />
-                                <FieldError errors={[form.formState.errors.role]} />
-                            </Field>
-                        </FieldGroup>
-
-                        <DialogFooter>
-                            <DialogClose asChild>
-                                <Button type="button" variant="outline">
-                                    Cancelar
-                                </Button>
-                            </DialogClose>
-                            <Button type="submit" disabled={form.formState.isSubmitting}>
-                                {form.formState.isSubmitting && <Spinner />}
-                                {form.formState.isSubmitting ? 'Salvando...' : 'Salvar'}
-                            </Button>
-                        </DialogFooter>
-                    </form>
-                </DialogContent>
-            </Dialog>
-        </>
+            {table.getPageCount() > 1 && (
+                <div className="flex items-center justify-between text-sm text-muted-foreground">
+                    <p>
+                        {inicio}–{fim} de {totalFiltrado} registro
+                        {totalFiltrado !== 1 ? 's' : ''}
+                    </p>
+                    <div className="flex items-center gap-1">
+                        <Button
+                            variant="outline"
+                            size="icon-sm"
+                            onClick={() => table.previousPage()}
+                            className={cn(
+                                !table.getCanPreviousPage() && 'pointer-events-none opacity-50',
+                            )}
+                        >
+                            <ChevronLeft className="size-4" />
+                        </Button>
+                        <span className="min-w-16 text-center text-xs">
+                            {pageIndex + 1} / {table.getPageCount()}
+                        </span>
+                        <Button
+                            variant="outline"
+                            size="icon-sm"
+                            onClick={() => table.nextPage()}
+                            className={cn(
+                                !table.getCanNextPage() && 'pointer-events-none opacity-50',
+                            )}
+                        >
+                            <ChevronRight className="size-4" />
+                        </Button>
+                    </div>
+                </div>
+            )}
+        </div>
     );
 };

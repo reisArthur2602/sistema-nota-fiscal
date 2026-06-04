@@ -1,47 +1,36 @@
 'use client';
 
+import { useQuery } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 
 import { contarPendentes } from './emissor/actions';
 
-const INTERVALO_MS = 8000;
-
 export const NotificacaoEmissor = () => {
     const totalAnterior = useRef<number | null>(null);
 
+    const { data: total } = useQuery({
+        queryKey: ['pendentes-count'],
+        queryFn: contarPendentes,
+        refetchInterval: 8000,
+        refetchIntervalInBackground: false,
+    });
+
     useEffect(() => {
-        let ativo = true;
+        if (total === undefined) return;
 
-        const verificar = async () => {
-            try {
-                const total = await contarPendentes();
-                if (!ativo) return;
+        if (totalAnterior.current !== null && total > totalAnterior.current) {
+            const novas = total - totalAnterior.current;
+            toast.info(
+                novas === 1
+                    ? 'Nova solicitação na fila'
+                    : `${novas} novas solicitações na fila`,
+                { description: 'Acesse a fila de emissão para conferir.' },
+            );
+        }
 
-                if (totalAnterior.current !== null && total > totalAnterior.current) {
-                    const novas = total - totalAnterior.current;
-                    toast.info(
-                        novas === 1
-                            ? 'Nova solicitação na fila'
-                            : `${novas} novas solicitações na fila`,
-                        { description: 'Acesse a fila de emissão para conferir.' },
-                    );
-                }
-
-                totalAnterior.current = total;
-            } catch {
-                // silencioso: tenta novamente no proximo ciclo
-            }
-        };
-
-        verificar();
-        const id = setInterval(verificar, INTERVALO_MS);
-
-        return () => {
-            ativo = false;
-            clearInterval(id);
-        };
-    }, []);
+        totalAnterior.current = total;
+    }, [total]);
 
     return null;
 };

@@ -1,5 +1,7 @@
 'use server';
 
+import { revalidatePath } from 'next/cache';
+
 import { AcaoLog, StatusSolicitacao } from '@/generated/prisma/enums';
 import { requireAuth } from '@/utils/require-auth';
 import { requirePermission } from '@/utils/require-permission';
@@ -7,11 +9,10 @@ import { sendMail } from '@/lib/nodemailer';
 import prisma from '@/lib/prisma';
 import { buildMensagem } from '@/utils/build-message';
 
-export const listarSolicitacoes = async (status?: string) => {
+export const listarSolicitacoes = async () => {
     await requirePermission(['EMISSOR', 'SUPER_ADMIN']);
 
     return prisma.solicitacao.findMany({
-        where: status ? { status: status as StatusSolicitacao } : undefined,
         include: {
             criadoPor: { select: { nome: true, usuario: true } },
         },
@@ -65,5 +66,6 @@ export const enviarNota = async (
         },
     });
 
+    revalidatePath('/emissor');
     return { success: true, message: 'Nota fiscal enviada com sucesso!' };
 };

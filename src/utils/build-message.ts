@@ -1,4 +1,5 @@
-import type { Solicitacao } from '@/generated/prisma';
+
+import { Solicitacao } from '@/generated/prisma/client';
 import { formatDate } from './format-date';
 
 export const buildMensagem = (s: Solicitacao, link: string) =>

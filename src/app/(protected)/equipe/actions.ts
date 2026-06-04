@@ -1,12 +1,13 @@
 'use server';
 
 import bcrypt from 'bcrypt';
+import { revalidatePath } from 'next/cache';
 
 import { AcaoLog } from '@/generated/prisma/enums';
 import { requirePermission } from '@/utils/require-permission';
 import prisma from '@/lib/prisma';
 
-import type { UsuarioRow } from './equipe-table';
+import type { UsuarioRow } from './equipe-columns';
 
 type UsuarioInput = {
     nome: string;
@@ -49,6 +50,7 @@ export const criarUsuario = async (input: UsuarioInput): Promise<ActionResult & 
         },
     });
 
+    revalidatePath('/equipe');
     return { success: true, message: 'Usuário criado com sucesso.', id: criado.id };
 };
 
@@ -82,6 +84,7 @@ export const editarUsuario = async (id: string, input: UsuarioInput): Promise<Ac
         },
     });
 
+    revalidatePath('/equipe');
     return { success: true, message: 'Usuário atualizado com sucesso.' };
 };
 
@@ -108,5 +111,6 @@ export const toggleAtivo = async (id: string, ativo: boolean): Promise<ActionRes
         },
     });
 
+    revalidatePath('/equipe');
     return { success: true, message: `Usuário ${ativo ? 'ativado' : 'desativado'} com sucesso.` };
 };

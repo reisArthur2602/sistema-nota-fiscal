@@ -1,6 +1,6 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
@@ -13,12 +13,6 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 
-type Props = {
-    usuario?: string;
-    acao?: string;
-    periodo?: string;
-};
-
 const ACOES = [
     { value: 'LOGIN', label: 'Login' },
     { value: 'SOLICITACAO_CRIADA', label: 'Solicitação criada' },
@@ -29,38 +23,55 @@ const ACOES = [
     { value: 'USUARIO_DESATIVADO', label: 'Usuário desativado' },
 ];
 
-export const AuditoriaFilters = ({ usuario = '', acao = '', periodo = '' }: Props) => {
+export const AuditoriaFilters = () => {
     const router = useRouter();
-    const [filtros, setFiltros] = useState({ usuario, acao, periodo });
+    const searchParams = useSearchParams();
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
+    const [local, setLocal] = useState({
+        usuario: searchParams.get('usuario') ?? '',
+        acao: searchParams.get('acao') ?? '',
+        periodo: searchParams.get('periodo') ?? '',
+    });
+
+    const push = (overrides: Partial<typeof local>) => {
+        const next = { ...local, ...overrides };
         const params = new URLSearchParams();
-        if (filtros.usuario) params.set('usuario', filtros.usuario);
-        if (filtros.acao) params.set('acao', filtros.acao);
-        if (filtros.periodo) params.set('periodo', filtros.periodo);
+        if (next.usuario) params.set('usuario', next.usuario);
+        if (next.acao) params.set('acao', next.acao);
+        if (next.periodo) params.set('periodo', next.periodo);
         router.replace(`?${params.toString()}`);
     };
 
+    const handleSubmit = (e: React.SyntheticEvent) => {
+        e.preventDefault();
+        push({});
+    };
+
+    const handleSelectChange = (key: 'acao' | 'periodo', value: string) => {
+        const v = value === 'todos' || value === 'todas' ? '' : value;
+        setLocal((f) => ({ ...f, [key]: v }));
+        push({ [key]: v });
+    };
+
     const handleLimpar = () => {
-        setFiltros({ usuario: '', acao: '', periodo: '' });
+        setLocal({ usuario: '', acao: '', periodo: '' });
         router.replace('?');
     };
 
-    const temFiltro = filtros.usuario || filtros.acao || filtros.periodo;
+    const temFiltro = local.usuario || local.acao || local.periodo;
 
     return (
         <form onSubmit={handleSubmit} className="flex flex-wrap items-end gap-2">
             <Input
                 placeholder="Filtrar por usuário"
-                value={filtros.usuario}
-                onChange={(e) => setFiltros((f) => ({ ...f, usuario: e.target.value }))}
+                value={local.usuario}
+                onChange={(e) => setLocal((f) => ({ ...f, usuario: e.target.value }))}
                 className="w-52"
             />
 
             <Select
-                value={filtros.acao}
-                onValueChange={(v) => setFiltros((f) => ({ ...f, acao: v === 'todas' ? '' : v }))}
+                value={local.acao || 'todas'}
+                onValueChange={(v) => handleSelectChange('acao', v)}
             >
                 <SelectTrigger className="w-48">
                     <SelectValue placeholder="Todas as ações" />
@@ -76,8 +87,8 @@ export const AuditoriaFilters = ({ usuario = '', acao = '', periodo = '' }: Prop
             </Select>
 
             <Select
-                value={filtros.periodo}
-                onValueChange={(v) => setFiltros((f) => ({ ...f, periodo: v === 'todos' ? '' : v }))}
+                value={local.periodo || 'todos'}
+                onValueChange={(v) => handleSelectChange('periodo', v)}
             >
                 <SelectTrigger className="w-44">
                     <SelectValue placeholder="Qualquer período" />

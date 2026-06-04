@@ -25,6 +25,30 @@
     animation: logo-gradient 4s ease infinite;
 }
 
+/* Scrollbar */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: var(--primary) transparent;
+}
+
+::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background-color: var(--primary);
+    border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background-color: color-mix(in oklch, var(--primary) 80%, white);
+}
+
 :root {
     --background: oklch(0.9711 0.0074 80.7211);
     --foreground: oklch(0.3 0.0358 30.2042);

@@ -1,16 +1,18 @@
 'use server';
 
+import { PER_PAGE } from '@/constants';
 import { AcaoLog } from '@/generated/prisma/enums';
-import { requirePermission } from '@/utils/require-permission';
 import prisma from '@/lib/prisma';
+import { requirePermission } from '@/utils/require-permission';
 
 type FiltroLogs = {
     usuario?: string;
     acao?: string;
     periodo?: string;
+    page?: number;
 };
 
-export const listarLogs = async ({ usuario, acao, periodo }: FiltroLogs = {}) => {
+export const listarLogs = async ({ usuario, acao, periodo, page = 1 }: FiltroLogs = {}) => {
     await requirePermission(['SUPER_ADMIN']);
 
     const corte = (() => {
@@ -21,25 +23,34 @@ export const listarLogs = async ({ usuario, acao, periodo }: FiltroLogs = {}) =>
         return data;
     })();
 
-    return prisma.log.findMany({
-        where: {
-            ...(usuario && {
-                OR: [
-                    { usuarioNome: { contains: usuario, mode: 'insensitive' } },
-                    { usuarioLogin: { contains: usuario, mode: 'insensitive' } },
-                ],
-            }),
-            ...(acao && { acao: acao as AcaoLog }),
-            ...(corte && { criadoEm: { gte: corte } }),
-        },
-        select: {
-            id: true,
-            usuarioNome: true,
-            usuarioLogin: true,
-            acao: true,
-            detalhes: true,
-            criadoEm: true,
-        },
-        orderBy: { criadoEm: 'desc' },
-    });
+    const where = {
+        ...(usuario && {
+            OR: [
+                { usuarioNome: { contains: usuario, mode: 'insensitive' as const } },
+                { usuarioLogin: { contains: usuario, mode: 'insensitive' as const } },
+            ],
+        }),
+        ...(acao && { acao: acao as AcaoLog }),
+        ...(corte && { criadoEm: { gte: corte } }),
+    };
+
+    const [items, total] = await Promise.all([
+        prisma.log.findMany({
+            where,
+            select: {
+                id: true,
+                usuarioNome: true,
+                usuarioLogin: true,
+                acao: true,
+                detalhes: true,
+                criadoEm: true,
+            },
+            orderBy: { criadoEm: 'desc' },
+            take: PER_PAGE,
+            skip: (page - 1) * PER_PAGE,
+        }),
+        prisma.log.count({ where }),
+    ]);
+
+    return { items, total, page, perPage: PER_PAGE };
 };

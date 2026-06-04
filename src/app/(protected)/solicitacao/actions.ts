@@ -1,5 +1,7 @@
 'use server';
 
+import { revalidatePath } from 'next/cache';
+
 import { AcaoLog } from '@/generated/prisma/enums';
 import prisma from '@/lib/prisma';
 import { requireAuth } from '@/utils/require-auth';
@@ -52,6 +54,7 @@ export const criarSolicitacao = async (
         },
     });
 
+    revalidatePath('/solicitacao');
     return { success: true, message: 'Solicitação enviada com sucesso.' };
 };
 

@@ -16,7 +16,6 @@ import Link from 'next/link';
 import { Logo } from '@/components/logo';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { redirectIfAuthenticated } from '@/utils/redirect-if-authenticated';
 
 export const metadata: Metadata = {
     title: 'NotaFácil — Nota fiscal integrada do registro ao envio',
@@ -82,9 +81,7 @@ const extras = [
     { icon: CheckCircle2, text: 'Status atualizado automaticamente' },
 ];
 
-const LandingPage = async () => {
-    await redirectIfAuthenticated();
-
+const LandingPage = () => {
     return (
         <div className="flex-1 bg-background">
             {/* Nav */}

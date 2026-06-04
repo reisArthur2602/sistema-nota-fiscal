@@ -1,16 +1,26 @@
 'use client';
 
-import { MoreHorizontal } from 'lucide-react';
+import {
+    flexRender,
+    getCoreRowModel,
+    getFilteredRowModel,
+    getPaginationRowModel,
+    useReactTable,
+    type ColumnFiltersState,
+    type FilterFn,
+} from '@tanstack/react-table';
+import { ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import { useState } from 'react';
 
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import {
     Table,
     TableBody,
@@ -19,119 +29,178 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import { StatusSolicitacao } from '@/generated/prisma/enums';
-import type { Prisma } from '@/generated/prisma/client';
-import { formatDate } from '@/utils/format-date';
+import { PER_PAGE } from '@/constants';
+import { cn } from '@/lib/utils';
 
-import { DetalhesDialog } from './detalhes-dialog';
-import { EnviarNotaDialog } from './enviar-nota-dialog';
+import { emissorColumns, type SolicitacaoRow } from './emissor-columns';
 
-export type SolicitacaoRow = Prisma.SolicitacaoGetPayload<{
-    include: { criadoPor: { select: { nome: true; usuario: true } } };
-}>;
+export type { SolicitacaoRow };
 
-const statusConfig: Record<StatusSolicitacao, { label: string; className: string }> = {
-    PENDENTE: {
-        label: 'Pendente',
-        className: 'border-border bg-transparent text-muted-foreground',
-    },
-    EMITIDA: {
-        label: 'Emitida',
-        className: 'border-blue-500/20 bg-blue-500/10 text-blue-600 dark:text-blue-400',
-    },
-    ENVIADA_AO_PACIENTE: {
-        label: 'Enviada',
-        className: 'border-green-500/20 bg-green-500/10 text-green-600 dark:text-green-400',
-    },
+const globalFilterFn: FilterFn<SolicitacaoRow> = (row, _columnId, filterValue: string) => {
+    const s = filterValue.toLowerCase();
+    return (
+        row.original.nome.toLowerCase().includes(s) ||
+        row.original.cpf.includes(s) ||
+        row.original.idRegistro.toLowerCase().includes(s) ||
+        row.original.especialidade.toLowerCase().includes(s)
+    );
 };
 
 export const EmissorTable = ({ solicitacoes }: { solicitacoes: SolicitacaoRow[] }) => {
-    const [verSolicitacao, setVerSolicitacao] = useState<SolicitacaoRow | null>(null);
-    const [enviarSolicitacao, setEnviarSolicitacao] = useState<SolicitacaoRow | null>(null);
+    const [globalFilter, setGlobalFilter] = useState('');
+    const [searchInput, setSearchInput] = useState('');
+    const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+
+    const table = useReactTable({
+        data: solicitacoes,
+        columns: emissorColumns,
+        state: { globalFilter, columnFilters },
+        onGlobalFilterChange: setGlobalFilter,
+        onColumnFiltersChange: setColumnFilters,
+        globalFilterFn,
+        getCoreRowModel: getCoreRowModel(),
+        getFilteredRowModel: getFilteredRowModel(),
+        getPaginationRowModel: getPaginationRowModel(),
+        initialState: { pagination: { pageSize: PER_PAGE } },
+    });
+
+    const handleSearch = (e: React.SyntheticEvent) => {
+        e.preventDefault();
+        setGlobalFilter(searchInput);
+    };
+
+    const statusAtual =
+        (columnFilters.find((f) => f.id === 'status')?.value as string) ?? 'todos';
+
+    const handleStatusChange = (value: string) =>
+        setColumnFilters(value === 'todos' ? [] : [{ id: 'status', value }]);
+
+    const { pageIndex } = table.getState().pagination;
+    const pageSize = table.getState().pagination.pageSize;
+    const totalFiltrado = table.getFilteredRowModel().rows.length;
+    const inicio = pageIndex * pageSize + 1;
+    const fim = Math.min((pageIndex + 1) * pageSize, totalFiltrado);
+    const temFiltro = globalFilter || statusAtual !== 'todos';
 
     return (
-        <>
+        <div className="space-y-4">
+            <div className="flex flex-wrap items-end gap-2">
+                <form onSubmit={handleSearch} className="flex gap-2">
+                    <Input
+                        placeholder="Buscar paciente, CPF, registro..."
+                        value={searchInput}
+                        onChange={(e) => setSearchInput(e.target.value)}
+                        className="w-64"
+                    />
+                    <Button type="submit" variant="outline">
+                        <Search className="size-4" />
+                        Buscar
+                    </Button>
+                </form>
+
+                <Select value={statusAtual} onValueChange={handleStatusChange}>
+                    <SelectTrigger className="w-40">
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="todos">Todos</SelectItem>
+                        <SelectItem value="PENDENTE">Pendente</SelectItem>
+                        <SelectItem value="EMITIDA">Emitida</SelectItem>
+                        <SelectItem value="ENVIADA_AO_PACIENTE">Enviada</SelectItem>
+                    </SelectContent>
+                </Select>
+
+                {temFiltro && (
+                    <Button
+                        variant="ghost"
+                        onClick={() => {
+                            setGlobalFilter('');
+                            setSearchInput('');
+                            setColumnFilters([]);
+                        }}
+                    >
+                        Limpar
+                    </Button>
+                )}
+            </div>
+
             <div className="overflow-hidden rounded-2xl border bg-card">
                 <Table>
                     <TableHeader>
-                        <TableRow>
-                            <TableHead>Registro</TableHead>
-                            <TableHead>Paciente</TableHead>
-                            <TableHead>Especialidade</TableHead>
-                            <TableHead>Data</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead />
-                        </TableRow>
+                        {table.getHeaderGroups().map((headerGroup) => (
+                            <TableRow key={headerGroup.id}>
+                                {headerGroup.headers.map((header) => (
+                                    <TableHead key={header.id}>
+                                        {flexRender(
+                                            header.column.columnDef.header,
+                                            header.getContext(),
+                                        )}
+                                    </TableHead>
+                                ))}
+                            </TableRow>
+                        ))}
                     </TableHeader>
                     <TableBody>
-                        {solicitacoes.length === 0 ? (
+                        {table.getRowModel().rows.length === 0 ? (
                             <TableRow>
                                 <TableCell
-                                    colSpan={6}
+                                    colSpan={emissorColumns.length}
                                     className="h-24 text-center text-sm text-muted-foreground"
                                 >
-                                    Nenhuma solicitação encontrada para este filtro.
+                                    Nenhuma solicitação encontrada.
                                 </TableCell>
                             </TableRow>
                         ) : (
-                            solicitacoes.map((s) => {
-                                const st = statusConfig[s.status];
-                                return (
-                                    <TableRow key={s.id}>
-                                        <TableCell className="font-mono text-xs text-muted-foreground">
-                                            {s.idRegistro}
+                            table.getRowModel().rows.map((row) => (
+                                <TableRow key={row.id}>
+                                    {row.getVisibleCells().map((cell) => (
+                                        <TableCell key={cell.id}>
+                                            {flexRender(
+                                                cell.column.columnDef.cell,
+                                                cell.getContext(),
+                                            )}
                                         </TableCell>
-                                        <TableCell>
-                                            <p className="font-medium">{s.nome}</p>
-                                            <p className="text-xs text-muted-foreground">{s.cpf}</p>
-                                        </TableCell>
-                                        <TableCell className="max-w-48 truncate text-muted-foreground">
-                                            {s.especialidade}
-                                        </TableCell>
-                                        <TableCell className="text-muted-foreground">
-                                            {formatDate(s.data)}
-                                        </TableCell>
-                                        <TableCell>
-                                            <Badge className={st.className}>{st.label}</Badge>
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" size="icon-sm">
-                                                        <MoreHorizontal className="size-4" />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end">
-                                                    <DropdownMenuItem
-                                                        onClick={() => setVerSolicitacao(s)}
-                                                    >
-                                                        Ver detalhes
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem
-                                                        onClick={() => setEnviarSolicitacao(s)}
-                                                    >
-                                                        Enviar nota
-                                                    </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                        </TableCell>
-                                    </TableRow>
-                                );
-                            })
+                                    ))}
+                                </TableRow>
+                            ))
                         )}
                     </TableBody>
                 </Table>
             </div>
 
-            <DetalhesDialog
-                solicitacao={verSolicitacao}
-                onClose={() => setVerSolicitacao(null)}
-            />
-
-            <EnviarNotaDialog
-                solicitacao={enviarSolicitacao}
-                onClose={() => setEnviarSolicitacao(null)}
-            />
-        </>
+            {table.getPageCount() > 1 && (
+                <div className="flex items-center justify-between text-sm text-muted-foreground">
+                    <p>
+                        {inicio}–{fim} de {totalFiltrado} registro
+                        {totalFiltrado !== 1 ? 's' : ''}
+                    </p>
+                    <div className="flex items-center gap-1">
+                        <Button
+                            variant="outline"
+                            size="icon-sm"
+                            onClick={() => table.previousPage()}
+                            className={cn(
+                                !table.getCanPreviousPage() && 'pointer-events-none opacity-50',
+                            )}
+                        >
+                            <ChevronLeft className="size-4" />
+                        </Button>
+                        <span className="min-w-16 text-center text-xs">
+                            {pageIndex + 1} / {table.getPageCount()}
+                        </span>
+                        <Button
+                            variant="outline"
+                            size="icon-sm"
+                            onClick={() => table.nextPage()}
+                            className={cn(
+                                !table.getCanNextPage() && 'pointer-events-none opacity-50',
+                            )}
+                        >
+                            <ChevronRight className="size-4" />
+                        </Button>
+                    </div>
+                </div>
+            )}
+        </div>
     );
 };

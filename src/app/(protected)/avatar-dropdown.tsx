@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { getInitials } from '@/utils/get-initials';
 
-import { logout } from './actions/logout';
+import { logout } from '../../utils/logout';
 
 type AvatarDropdownProps = {
     nome: string;

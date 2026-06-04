@@ -1,5 +1,7 @@
 import { PropsWithChildren } from 'react';
 
+export const dynamic = 'force-dynamic';
+
 import { OnboardingDialog } from '@/components/onboarding-dialog';
 
 import { requireAuth } from '@/utils/require-auth';

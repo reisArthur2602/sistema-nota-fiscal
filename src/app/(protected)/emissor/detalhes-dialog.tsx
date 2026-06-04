@@ -1,5 +1,7 @@
 'use client';
 
+import { type PropsWithChildren } from 'react';
+
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -10,12 +12,13 @@ import {
     DialogFooter,
     DialogHeader,
     DialogTitle,
+    DialogTrigger,
 } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { StatusSolicitacao } from '@/generated/prisma/enums';
 import { formatDate } from '@/utils/format-date';
 
-import type { SolicitacaoRow } from './emissor-table';
+import type { SolicitacaoRow } from './emissor-columns';
 
 const statusConfig: Record<StatusSolicitacao, { label: string; className: string }> = {
     PENDENTE: { label: 'Pendente', className: 'border-border bg-transparent text-muted-foreground' },
@@ -29,87 +32,84 @@ const statusConfig: Record<StatusSolicitacao, { label: string; className: string
     },
 };
 
-type Props = {
-    solicitacao: SolicitacaoRow | null;
-    onClose: () => void;
-};
+type Props = PropsWithChildren<{
+    solicitacao: SolicitacaoRow;
+}>;
 
-export const DetalhesDialog = ({ solicitacao, onClose }: Props) => {
+export const DetalhesDialog = ({ solicitacao, children }: Props) => {
     return (
-        <Dialog open={!!solicitacao} onOpenChange={(open) => !open && onClose()}>
-            {solicitacao && (
-                <DialogContent className="sm:max-w-md">
-                    <DialogHeader>
-                        <DialogTitle>Detalhes da Solicitação</DialogTitle>
-                        <DialogDescription>Registro #{solicitacao.idRegistro}</DialogDescription>
-                    </DialogHeader>
+        <Dialog>
+            <DialogTrigger asChild>{children}</DialogTrigger>
 
-                    <div className="space-y-4 py-1 text-sm">
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-0.5">
-                                <p className="text-xs text-muted-foreground">Data</p>
-                                <p>{formatDate(solicitacao.data)}</p>
-                            </div>
-                            <div className="space-y-0.5">
-                                <p className="text-xs text-muted-foreground">Status</p>
-                                <Badge className={statusConfig[solicitacao.status].className}>
-                                    {statusConfig[solicitacao.status].label}
-                                </Badge>
-                            </div>
-                        </div>
+            <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle>Detalhes da Solicitação</DialogTitle>
+                    <DialogDescription>Registro #{solicitacao.idRegistro}</DialogDescription>
+                </DialogHeader>
 
-                        <Separator />
-
-                        <div className="space-y-3">
-                            <div className="space-y-0.5">
-                                <p className="text-xs text-muted-foreground">Nome</p>
-                                <p className="font-medium">{solicitacao.nome}</p>
-                            </div>
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="space-y-0.5">
-                                    <p className="text-xs text-muted-foreground">CPF</p>
-                                    <p>{solicitacao.cpf}</p>
-                                </div>
-                                <div className="space-y-0.5">
-                                    <p className="text-xs text-muted-foreground">Telefone</p>
-                                    <p>{solicitacao.telefone || '—'}</p>
-                                </div>
-                            </div>
-                            <div className="space-y-0.5">
-                                <p className="text-xs text-muted-foreground">E-mail</p>
-                                <p>{solicitacao.email || '—'}</p>
-                            </div>
-                            <div className="space-y-0.5">
-                                <p className="text-xs text-muted-foreground">Endereço</p>
-                                <p>{solicitacao.endereco}</p>
-                            </div>
-                        </div>
-
-                        <Separator />
-
+                <div className="space-y-4 py-1 text-sm">
+                    <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-0.5">
-                            <p className="text-xs text-muted-foreground">Especialidade</p>
-                            <p className="font-medium">{solicitacao.especialidade}</p>
+                            <p className="text-xs text-muted-foreground">Data</p>
+                            <p>{formatDate(solicitacao.data)}</p>
                         </div>
-
-                        <Separator />
-
                         <div className="space-y-0.5">
-                            <p className="text-xs text-muted-foreground">Solicitado por</p>
-                            <p className="font-medium">{solicitacao.criadoPor.nome}</p>
-                            <p className="text-xs text-muted-foreground">
-                                @{solicitacao.criadoPor.usuario}
-                            </p>
+                            <p className="text-xs text-muted-foreground">Status</p>
+                            <Badge className={statusConfig[solicitacao.status].className}>
+                                {statusConfig[solicitacao.status].label}
+                            </Badge>
                         </div>
                     </div>
 
-                    <DialogFooter>
-                        <DialogClose asChild>
-                            <Button variant="outline">Fechar</Button>
-                        </DialogClose>
-                    </DialogFooter>
-                </DialogContent>
-            )}
+                    <Separator />
+
+                    <div className="space-y-3">
+                        <div className="space-y-0.5">
+                            <p className="text-xs text-muted-foreground">Nome</p>
+                            <p className="font-medium">{solicitacao.nome}</p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-0.5">
+                                <p className="text-xs text-muted-foreground">CPF</p>
+                                <p>{solicitacao.cpf}</p>
+                            </div>
+                            <div className="space-y-0.5">
+                                <p className="text-xs text-muted-foreground">Telefone</p>
+                                <p>{solicitacao.telefone || '—'}</p>
+                            </div>
+                        </div>
+                        <div className="space-y-0.5">
+                            <p className="text-xs text-muted-foreground">E-mail</p>
+                            <p>{solicitacao.email || '—'}</p>
+                        </div>
+                        <div className="space-y-0.5">
+                            <p className="text-xs text-muted-foreground">Endereço</p>
+                            <p>{solicitacao.endereco}</p>
+                        </div>
+                    </div>
+
+                    <Separator />
+
+                    <div className="space-y-0.5">
+                        <p className="text-xs text-muted-foreground">Especialidade</p>
+                        <p className="font-medium">{solicitacao.especialidade}</p>
+                    </div>
+
+                    <Separator />
+
+                    <div className="space-y-0.5">
+                        <p className="text-xs text-muted-foreground">Solicitado por</p>
+                        <p className="font-medium">{solicitacao.criadoPor.nome}</p>
+                        <p className="text-xs text-muted-foreground">@{solicitacao.criadoPor.usuario}</p>
+                    </div>
+                </div>
+
+                <DialogFooter>
+                    <DialogClose asChild>
+                        <Button variant="outline">Fechar</Button>
+                    </DialogClose>
+                </DialogFooter>
+            </DialogContent>
         </Dialog>
     );
 };

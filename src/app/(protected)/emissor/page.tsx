@@ -1,5 +1,5 @@
-import type { Metadata } from 'next';
 import { Suspense } from 'react';
+import type { Metadata } from 'next';
 
 import { requirePermission } from '@/utils/require-permission';
 
@@ -10,9 +10,7 @@ export const metadata: Metadata = {
     title: 'Emissão',
 };
 
-const EmissorPage = async ({ searchParams }: { searchParams: Promise<{ status?: string }> }) => {
-    const { status } = await searchParams;
-
+const EmissorPage = async () => {
     await requirePermission(['EMISSOR', 'SUPER_ADMIN']);
 
     return (
@@ -25,7 +23,7 @@ const EmissorPage = async ({ searchParams }: { searchParams: Promise<{ status?: 
             </div>
 
             <Suspense fallback={<EmissorTableSkeleton />}>
-                <EmissorContent status={status} />
+                <EmissorContent />
             </Suspense>
         </div>
     );
