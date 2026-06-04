@@ -12,7 +12,7 @@ export const NotificacaoEmissor = () => {
     const { data: total } = useQuery({
         queryKey: ['pendentes-count'],
         queryFn: contarPendentes,
-        refetchInterval: 8000,
+        refetchInterval: 60000,
         refetchIntervalInBackground: false,
     });
 
@@ -22,10 +22,8 @@ export const NotificacaoEmissor = () => {
         if (totalAnterior.current !== null && total > totalAnterior.current) {
             const novas = total - totalAnterior.current;
             toast.info(
-                novas === 1
-                    ? 'Nova solicitação na fila'
-                    : `${novas} novas solicitações na fila`,
-                { description: 'Acesse a fila de emissão para conferir.' },
+                novas === 1 ? 'Nova solicitação na fila' : `${novas} novas solicitações na fila`,
+                { description: 'Acesse a fila de emissão para conferir.' }
             );
         }
 

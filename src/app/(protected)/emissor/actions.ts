@@ -3,11 +3,11 @@
 import { revalidatePath } from 'next/cache';
 
 import { AcaoLog, StatusSolicitacao } from '@/generated/prisma/enums';
-import { requireAuth } from '@/utils/require-auth';
-import { requirePermission } from '@/utils/require-permission';
 import { sendMail } from '@/lib/nodemailer';
 import prisma from '@/lib/prisma';
 import { buildMensagem } from '@/utils/build-message';
+import { requireAuth } from '@/utils/require-auth';
+import { requirePermission } from '@/utils/require-permission';
 
 export const listarSolicitacoes = async () => {
     await requirePermission(['EMISSOR', 'SUPER_ADMIN']);
@@ -16,7 +16,7 @@ export const listarSolicitacoes = async () => {
         include: {
             criadoPor: { select: { nome: true, usuario: true } },
         },
-        orderBy: { criadoEm: 'desc' },
+        orderBy: { status: 'asc' },
     });
 };
 
@@ -30,7 +30,7 @@ export const contarPendentes = async (): Promise<number> => {
 
 export const enviarNota = async (
     solicitacaoId: string,
-    linkNota: string,
+    linkNota: string
 ): Promise<{ success: boolean; message: string }> => {
     const session = await requirePermission(['EMISSOR', 'SUPER_ADMIN']);
 
