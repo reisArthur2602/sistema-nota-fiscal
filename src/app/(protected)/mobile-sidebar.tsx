@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import {
     Sheet,
     SheetContent,
+    SheetDescription,
     SheetTitle,
     SheetTrigger,
 } from '@/components/ui/sheet';
@@ -38,6 +39,7 @@ export const MobileSidebar = ({ role }: { role: Role }) => {
             </SheetTrigger>
 
             <SheetContent side="left" className="w-56 p-0">
+                <SheetDescription className="sr-only" />
                 <SheetTitle className="sr-only">Menu de navegação</SheetTitle>
 
                 <div className="flex h-14 items-center border-b px-4">
@@ -57,7 +59,7 @@ export const MobileSidebar = ({ role }: { role: Role }) => {
                                     onClick={() => setAberto(false)}
                                     className={cn(
                                         'flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground',
-                                        pathname.startsWith(href) && 'bg-muted text-foreground',
+                                        pathname.startsWith(href) && 'bg-muted text-foreground'
                                     )}
                                 >
                                     <Icon className="size-4 shrink-0" />
