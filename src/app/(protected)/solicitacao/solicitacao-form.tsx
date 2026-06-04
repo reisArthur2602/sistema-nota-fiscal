@@ -20,7 +20,8 @@ import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 
-import { buscarRegistro, criarSolicitacao } from './actions';
+import { buscarRegistro } from '@/http/buscar-registro';
+import { criarSolicitacao } from './actions';
 
 const solicitacaoSchema = z.object({
     idRegistro: z.string().min(1, 'Informe o ID do registro.'),
@@ -29,10 +30,10 @@ const solicitacaoSchema = z.object({
     cpf: z.string().min(1, 'CPF é obrigatório.'),
     endereco: z.string().min(1, 'Endereço é obrigatório.'),
     especialidade: z.string().min(1, 'Especialidade é obrigatória.'),
-    valor: z.string().min(1, 'Valor é obrigatório.').refine(
-        (v) => !isNaN(parseFloat(v.replace(',', '.'))),
-        'Informe um valor válido.',
-    ),
+    valor: z
+        .string()
+        .min(1, 'Valor é obrigatório.')
+        .refine((v) => !isNaN(parseFloat(v.replace(',', '.'))), 'Informe um valor válido.'),
     email: z.string().refine((v) => !v || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v), 'E-mail inválido.'),
     telefone: z.string(),
 });
@@ -171,7 +172,6 @@ export const SolicitacaoForm = () => {
                     {erroBusca && <FieldError>{erroBusca}</FieldError>}
                 </Field>
             </div>
-
 
             <Dialog open={dialogAberto} onOpenChange={handleDialogClose}>
                 <DialogContent className="sm:max-w-lg">

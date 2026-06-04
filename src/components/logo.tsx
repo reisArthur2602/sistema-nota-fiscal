@@ -1,27 +1,10 @@
+import { Receipt } from 'lucide-react';
+import Link from 'next/link';
+
 import { cn } from '@/lib/utils';
 
-const LogoIcon = ({ className }: { className?: string }) => (
-    <svg
-        viewBox="0 0 32 32"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-        className={className}
-    >
-        <rect width="32" height="32" rx="7" className="fill-foreground" />
-        <path
-            d="M9 8.5h14v12.5l-2-1.25-2 1.25-2-1.25-2 1.25-2-1.25-2 1.25V8.5z"
-            className="fill-background opacity-10"
-        />
-        <path
-            d="M11.5 13.5h9M11.5 17h6"
-            className="stroke-background"
-            strokeWidth="1.75"
-            strokeLinecap="round"
-        />
-    </svg>
-);
-
 type LogoProps = {
+    href?: string;
     iconOnly?: boolean;
     className?: string;
     iconClassName?: string;
@@ -29,19 +12,29 @@ type LogoProps = {
 };
 
 export const Logo = ({
+    href = '/',
     iconOnly = false,
     className,
     iconClassName,
     textClassName,
 }: LogoProps) => {
     return (
-        <div className={cn('flex items-center gap-2.5', className)}>
-            <LogoIcon className={cn('size-7 shrink-0', iconClassName)} />
+        <Link href={href} className={cn('flex items-center gap-1', className)}>
+            <div
+                className={cn(
+                    'logo-gradient relative flex shrink-0 items-center justify-center rounded-xl shadow-md shadow-primary/30',
+                    'size-9',
+                    iconClassName,
+                )}
+            >
+                <Receipt className="size-[72%] text-white drop-shadow-sm" strokeWidth={2} />
+            </div>
+
             {!iconOnly && (
                 <span className={cn('font-semibold tracking-tight', textClassName)}>
-                    NotaFácil
+                    Nota<span className="text-primary">Fácil</span>
                 </span>
             )}
-        </div>
+        </Link>
     );
 };

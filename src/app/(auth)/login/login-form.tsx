@@ -1,6 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useMutation } from '@tanstack/react-query';
 import { Eye, EyeOff } from 'lucide-react';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -10,6 +11,9 @@ import { Button } from '@/components/ui/button';
 import { Field, FieldError, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
+
+import { toast } from 'sonner';
+import { loginAction } from './actions';
 
 const loginSchema = z.object({
     usuario: z.string().min(3, 'Informe seu nome de usuario.'),
@@ -26,7 +30,23 @@ export const LoginForm = () => {
         defaultValues: { usuario: '', senha: '' },
     });
 
-    const onSubmit = async (_data: LoginFormData) => {};
+    const mutation = useMutation({
+        mutationFn: async (data: LoginFormData) => {
+            
+            const { message, success } = await loginAction({
+                usuario: data.usuario,
+                senha: data.senha,
+            });
+
+            if (!success) toast.error(message);
+
+            toast.success(message);
+        },
+    });
+
+    const onSubmit = (data: LoginFormData) => {
+        mutation.mutate(data);
+    };
 
     return (
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -65,8 +85,8 @@ export const LoginForm = () => {
                 <FieldError errors={[form.formState.errors.senha]} />
             </Field>
 
-            <Button type="submit" className="mt-1 w-full" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting ? (
+            <Button type="submit" className="mt-1 w-full" disabled={mutation.isPending}>
+                {mutation.isPending ? (
                     <>
                         <Spinner />
                         Entrando...

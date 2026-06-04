@@ -1,2 +1,2 @@
-export const formatDate = (dateStr: string) =>
-    new Date(dateStr).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+export const formatDate = (date: Date | string) =>
+    new Date(date).toLocaleDateString('pt-BR', { timeZone: 'UTC' });

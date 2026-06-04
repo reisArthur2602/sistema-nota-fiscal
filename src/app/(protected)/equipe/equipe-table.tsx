@@ -44,17 +44,10 @@ import {
     TableRow,
 } from '@/components/ui/table';
 
+import { Role, Usuario } from '@/generated/prisma/browser';
 import { criarUsuario, editarUsuario, toggleAtivo } from './actions';
 
-type Role = 'SUPER_ADMIN' | 'RECEPCAO' | 'EMISSOR';
-
-export type Usuario = {
-    id: string;
-    nome: string;
-    usuario: string;
-    role: Role;
-    ativo: boolean;
-};
+export type UsuarioRow = Pick<Usuario, 'id' | 'nome' | 'usuario' | 'role' | 'ativo'>;
 
 const roleConfig: Record<Role, { label: string; className: string }> = {
     SUPER_ADMIN: { label: 'Super Admin', className: '' },
@@ -77,10 +70,10 @@ const usuarioSchema = z.object({
 
 type UsuarioFormData = z.infer<typeof usuarioSchema>;
 
-export const EquipeTable = ({ usuarios: inicial }: { usuarios: Usuario[] }) => {
-    const [usuarios, setUsuarios] = useState(inicial);
+export const EquipeTable = ({ usuarios: inicial }: { usuarios: UsuarioRow[] }) => {
+    const [usuarios, setUsuarios] = useState<UsuarioRow[]>(inicial);
     const [formAberto, setFormAberto] = useState(false);
-    const [usuarioEditando, setUsuarioEditando] = useState<Usuario | null>(null);
+    const [usuarioEditando, setUsuarioEditando] = useState<UsuarioRow | null>(null);
 
     const form = useForm<UsuarioFormData>({
         resolver: zodResolver(usuarioSchema),
@@ -93,7 +86,7 @@ export const EquipeTable = ({ usuarios: inicial }: { usuarios: Usuario[] }) => {
         setFormAberto(true);
     };
 
-    const abrirEditar = (usuario: Usuario) => {
+    const abrirEditar = (usuario: UsuarioRow) => {
         setUsuarioEditando(usuario);
         form.reset({ nome: usuario.nome, usuario: usuario.usuario, senha: '', role: usuario.role });
         setFormAberto(true);
@@ -107,7 +100,7 @@ export const EquipeTable = ({ usuarios: inicial }: { usuarios: Usuario[] }) => {
         setFormAberto(open);
     };
 
-    const handleToggleAtivo = async (usuario: Usuario) => {
+    const handleToggleAtivo = async (usuario: UsuarioRow) => {
         const resultado = await toggleAtivo(usuario.id, !usuario.ativo);
         if (!resultado.success) {
             toast.error(resultado.message);
@@ -134,7 +127,7 @@ export const EquipeTable = ({ usuarios: inicial }: { usuarios: Usuario[] }) => {
             setUsuarios((prev) =>
                 prev.map((u) =>
                     u.id === usuarioEditando.id
-                        ? { ...u, nome: data.nome, usuario: data.usuario, role: data.role as Role }
+                        ? { ...u, nome: data.nome, usuario: data.usuario, role: data.role }
                         : u
                 )
             );
@@ -151,7 +144,7 @@ export const EquipeTable = ({ usuarios: inicial }: { usuarios: Usuario[] }) => {
                     id: `usr-${Date.now()}`,
                     nome: data.nome,
                     usuario: data.usuario,
-                    role: data.role as Role,
+                    role: data.role,
                     ativo: true,
                 },
             ]);

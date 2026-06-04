@@ -4,6 +4,27 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@keyframes logo-gradient {
+    0%,
+    100% {
+        background-position: 0% 50%;
+    }
+    50% {
+        background-position: 100% 50%;
+    }
+}
+
+.logo-gradient {
+    background: linear-gradient(
+        135deg,
+        var(--primary),
+        oklch(0.62 0.18 160),
+        oklch(0.48 0.14 144)
+    );
+    background-size: 300% 300%;
+    animation: logo-gradient 4s ease infinite;
+}
+
 :root {
     --background: oklch(0.9711 0.0074 80.7211);
     --foreground: oklch(0.3 0.0358 30.2042);

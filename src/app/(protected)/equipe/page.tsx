@@ -1,18 +1,23 @@
+import { Suspense } from 'react';
 import type { Metadata } from 'next';
 
-import { listarUsuarios } from './actions';
-import { EquipeTable, type Usuario } from './equipe-table';
+import { requirePermission } from '@/utils/require-permission';
+
+import { EquipeContent } from './equipe-content';
+import { EquipeTableSkeleton } from './equipe-table-skeleton';
 
 export const metadata: Metadata = {
     title: 'Equipe',
 };
 
 const EquipePage = async () => {
-    const usuarios = await listarUsuarios();
+    await requirePermission(['SUPER_ADMIN']);
 
     return (
         <div className="space-y-6">
-            <EquipeTable usuarios={usuarios as Usuario[]} />
+            <Suspense fallback={<EquipeTableSkeleton />}>
+                <EquipeContent />
+            </Suspense>
         </div>
     );
 };

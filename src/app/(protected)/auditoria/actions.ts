@@ -1,6 +1,8 @@
 'use server';
 
-import { mockLogs } from '@/lib/mocks';
+import { AcaoLog } from '@/generated/prisma/enums';
+import { requirePermission } from '@/utils/require-permission';
+import prisma from '@/lib/prisma';
 
 type FiltroLogs = {
     usuario?: string;
@@ -9,29 +11,35 @@ type FiltroLogs = {
 };
 
 export const listarLogs = async ({ usuario, acao, periodo }: FiltroLogs = {}) => {
-    let logs = [...mockLogs];
+    await requirePermission(['SUPER_ADMIN']);
 
-    if (usuario) {
-        const termo = usuario.toLowerCase();
-        logs = logs.filter(
-            (l) =>
-                l.usuarioNome.toLowerCase().includes(termo) ||
-                l.usuarioLogin.toLowerCase().includes(termo),
-        );
-    }
+    const corte = (() => {
+        if (!periodo || periodo === 'todos') return undefined;
+        const data = new Date();
+        if (periodo === 'hoje') data.setHours(0, 0, 0, 0);
+        else data.setDate(data.getDate() - (periodo === '7d' ? 7 : 30));
+        return data;
+    })();
 
-    if (acao) {
-        logs = logs.filter((l) => l.acao === acao);
-    }
-
-    if (periodo && periodo !== 'todos') {
-        const agora = new Date();
-        const dias = periodo === 'hoje' ? 0 : periodo === '7d' ? 7 : 30;
-        const corte = new Date(agora);
-        corte.setDate(corte.getDate() - dias);
-        corte.setHours(0, 0, 0, 0);
-        logs = logs.filter((l) => new Date(l.criadoEm) >= corte);
-    }
-
-    return logs;
+    return prisma.log.findMany({
+        where: {
+            ...(usuario && {
+                OR: [
+                    { usuarioNome: { contains: usuario, mode: 'insensitive' } },
+                    { usuarioLogin: { contains: usuario, mode: 'insensitive' } },
+                ],
+            }),
+            ...(acao && { acao: acao as AcaoLog }),
+            ...(corte && { criadoEm: { gte: corte } }),
+        },
+        select: {
+            id: true,
+            usuarioNome: true,
+            usuarioLogin: true,
+            acao: true,
+            detalhes: true,
+            criadoEm: true,
+        },
+        orderBy: { criadoEm: 'desc' },
+    });
 };

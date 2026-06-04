@@ -1,20 +1,19 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 
-import { listarSolicitacoes } from './actions';
-import { EmissorTable } from './emissor-table';
-import { StatusFilter } from './status-filter';
+import { requirePermission } from '@/utils/require-permission';
+
+import { EmissorContent } from './emissor-content';
+import { EmissorTableSkeleton } from './emissor-table-skeleton';
 
 export const metadata: Metadata = {
     title: 'Emissão',
 };
 
-const EmissorPage = async ({
-    searchParams,
-}: {
-    searchParams: Promise<{ status?: string }>;
-}) => {
+const EmissorPage = async ({ searchParams }: { searchParams: Promise<{ status?: string }> }) => {
     const { status } = await searchParams;
-    const solicitacoes = await listarSolicitacoes(status);
+
+    await requirePermission(['EMISSOR', 'SUPER_ADMIN']);
 
     return (
         <div className="space-y-6">
@@ -25,9 +24,9 @@ const EmissorPage = async ({
                 </p>
             </div>
 
-            <StatusFilter statusAtual={status} />
-
-            <EmissorTable solicitacoes={solicitacoes} />
+            <Suspense fallback={<EmissorTableSkeleton />}>
+                <EmissorContent status={status} />
+            </Suspense>
         </div>
     );
 };

@@ -1,4 +1,4 @@
-import { Solicitacao } from '@/app/(protected)/emissor/emissor-table';
+import type { Solicitacao } from '@/generated/prisma';
 import { formatDate } from './format-date';
 
 export const buildMensagem = (s: Solicitacao, link: string) =>

@@ -1,24 +1,25 @@
 import { PropsWithChildren } from 'react';
 
-import { mockUser } from '@/lib/mocks';
-import type { Role } from '@/lib/types';
+import { OnboardingDialog } from '@/components/onboarding-dialog';
 
+import { requireAuth } from '@/utils/require-auth';
 import { Header } from './header';
 import { NotificacaoEmissor } from './notificacao-emissor';
 import { Sidebar } from './sidebar';
 
-const ProtectedLayout = ({ children }: PropsWithChildren) => {
-    const role = mockUser.role as Role;
+const ProtectedLayout = async ({ children }: PropsWithChildren) => {
+    const session = await requireAuth();
 
     return (
         <div className="flex h-dvh overflow-hidden">
-            <Sidebar role={role} />
+            <Sidebar role={session.role} />
             <div className="flex flex-1 flex-col overflow-hidden">
-                <Header />
+                <Header nome={session.nome} usuario={session.usuario} role={session.role} />
                 <main className="flex-1 overflow-y-auto p-6">{children}</main>
             </div>
 
-            {role === 'EMISSOR' && <NotificacaoEmissor />}
+            {session.role === 'EMISSOR' && <NotificacaoEmissor />}
+            <OnboardingDialog userId={session.id} role={session.role} nome={session.nome} />
         </div>
     );
 };

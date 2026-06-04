@@ -1,0 +1,76 @@
+generator client {
+    provider = "prisma-client"
+    output   = "../src/generated/prisma"
+}
+
+datasource db {
+    provider = "postgresql"
+}
+
+enum Role {
+    SUPER_ADMIN
+    RECEPCAO
+    EMISSOR
+}
+
+enum StatusSolicitacao {
+    PENDENTE
+    EMITIDA
+    ENVIADA_AO_PACIENTE
+}
+
+enum AcaoLog {
+    LOGIN
+    LOGOUT
+    SOLICITACAO_CRIADA
+    SOLICITACAO_EMITIDA
+    NOTA_ENVIADA
+    USUARIO_CRIADO
+    USUARIO_EDITADO
+    USUARIO_DESATIVADO
+}
+
+model Usuario {
+    id           String   @id @default(cuid())
+    nome         String
+    usuario      String   @unique
+    senhaHash    String
+    role         Role
+    ativo        Boolean  @default(true)
+    criadoEm     DateTime @default(now())
+    atualizadoEm DateTime @updatedAt
+
+    solicitacoes Solicitacao[]
+    logs         Log[]
+}
+
+model Solicitacao {
+    id            String            @id @default(cuid())
+    idRegistro    String
+    nome          String
+    cpf           String
+    endereco      String
+    especialidade String
+    valor         String
+    data          DateTime
+    email         String            @default("")
+    telefone      String            @default("")
+    status        StatusSolicitacao @default(PENDENTE)
+    criadoEm      DateTime          @default(now())
+    atualizadoEm  DateTime          @updatedAt
+
+    criadoPor   Usuario @relation(fields: [criadoPorId], references: [id])
+    criadoPorId String
+}
+
+model Log {
+    id           String   @id @default(cuid())
+    usuarioNome  String
+    usuarioLogin String
+    acao         AcaoLog
+    detalhes     String
+    criadoEm     DateTime @default(now())
+
+    usuario   Usuario @relation(fields: [usuarioId], references: [id])
+    usuarioId String
+}

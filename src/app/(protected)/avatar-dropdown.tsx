@@ -1,3 +1,5 @@
+'use client';
+
 import { LogOut } from 'lucide-react';
 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -9,25 +11,31 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { mockUser } from '@/lib/mocks';
 import { getInitials } from '@/utils/get-initials';
 
-export const AvatarDropdown = () => {
+import { logout } from './actions/logout';
+
+type AvatarDropdownProps = {
+    nome: string;
+    usuario: string;
+};
+
+export const AvatarDropdown = ({ nome, usuario }: AvatarDropdownProps) => {
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
                 <Avatar size="lg">
-                    <AvatarFallback>{getInitials(mockUser.nome)}</AvatarFallback>
+                    <AvatarFallback>{getInitials(nome)}</AvatarFallback>
                 </Avatar>
             </DropdownMenuTrigger>
 
             <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>
-                    <p className="text-sm font-medium text-foreground">{mockUser.nome}</p>
-                    <p className="text-xs text-muted-foreground">@{mockUser.usuario}</p>
+                    <p className="text-sm font-medium text-foreground">{nome}</p>
+                    <p className="text-xs text-muted-foreground">@{usuario}</p>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem variant="destructive">
+                <DropdownMenuItem variant="destructive" onSelect={() => logout()}>
                     <LogOut />
                     Sair
                 </DropdownMenuItem>

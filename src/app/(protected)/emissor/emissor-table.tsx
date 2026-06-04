@@ -1,33 +1,16 @@
 'use client';
 
-import { zodResolver } from '@hookform/resolvers/zod';
 import { MoreHorizontal } from 'lucide-react';
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { toast } from 'sonner';
-import { z } from 'zod';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-    Dialog,
-    DialogClose,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from '@/components/ui/dialog';
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Field, FieldError, FieldLabel } from '@/components/ui/field';
-import { Input } from '@/components/ui/input';
-import { Separator } from '@/components/ui/separator';
-import { Spinner } from '@/components/ui/spinner';
 import {
     Table,
     TableBody,
@@ -36,26 +19,18 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-
-import { buildMensagem } from '@/utils/build-message';
+import { StatusSolicitacao } from '@/generated/prisma/enums';
+import type { Prisma } from '@/generated/prisma/client';
 import { formatDate } from '@/utils/format-date';
-import { enviarNota } from './actions';
 
-export type Solicitacao = {
-    id: string;
-    idRegistro: string;
-    nome: string;
-    cpf: string;
-    endereco: string;
-    especialidade: string;
-    valor?: string;
-    data: string;
-    email?: string;
-    telefone?: string;
-    status: string;
-};
+import { DetalhesDialog } from './detalhes-dialog';
+import { EnviarNotaDialog } from './enviar-nota-dialog';
 
-const statusConfig: Record<string, { label: string; className: string }> = {
+export type SolicitacaoRow = Prisma.SolicitacaoGetPayload<{
+    include: { criadoPor: { select: { nome: true; usuario: true } } };
+}>;
+
+const statusConfig: Record<StatusSolicitacao, { label: string; className: string }> = {
     PENDENTE: {
         label: 'Pendente',
         className: 'border-border bg-transparent text-muted-foreground',
@@ -70,41 +45,9 @@ const statusConfig: Record<string, { label: string; className: string }> = {
     },
 };
 
-const enviarNotaSchema = z.object({
-    linkNota: z.string().url('Informe uma URL válida.'),
-});
-
-type EnviarNotaData = z.infer<typeof enviarNotaSchema>;
-
-export const EmissorTable = ({ solicitacoes }: { solicitacoes: Solicitacao[] }) => {
-    const [verSolicitacao, setVerSolicitacao] = useState<Solicitacao | null>(null);
-    const [enviarSolicitacao, setEnviarSolicitacao] = useState<Solicitacao | null>(null);
-
-    const form = useForm<EnviarNotaData>({
-        resolver: zodResolver(enviarNotaSchema),
-        defaultValues: { linkNota: '' },
-    });
-
-    const linkNota = form.watch('linkNota');
-
-    const handleEnviarClose = (open: boolean) => {
-        if (!open) {
-            form.reset();
-            setEnviarSolicitacao(null);
-        }
-    };
-
-    const onEnviar = async (data: EnviarNotaData) => {
-        if (!enviarSolicitacao) return;
-        const resultado = await enviarNota(enviarSolicitacao.id, data.linkNota);
-        if (!resultado.success) {
-            toast.error(resultado.message);
-            return;
-        }
-        toast.success(resultado.message);
-        form.reset();
-        setEnviarSolicitacao(null);
-    };
+export const EmissorTable = ({ solicitacoes }: { solicitacoes: SolicitacaoRow[] }) => {
+    const [verSolicitacao, setVerSolicitacao] = useState<SolicitacaoRow | null>(null);
+    const [enviarSolicitacao, setEnviarSolicitacao] = useState<SolicitacaoRow | null>(null);
 
     return (
         <>
@@ -132,10 +75,7 @@ export const EmissorTable = ({ solicitacoes }: { solicitacoes: Solicitacao[] }) 
                             </TableRow>
                         ) : (
                             solicitacoes.map((s) => {
-                                const st = statusConfig[s.status] ?? {
-                                    label: s.status,
-                                    className: 'border-border text-muted-foreground',
-                                };
+                                const st = statusConfig[s.status];
                                 return (
                                     <TableRow key={s.id}>
                                         <TableCell className="font-mono text-xs text-muted-foreground">
@@ -183,142 +123,15 @@ export const EmissorTable = ({ solicitacoes }: { solicitacoes: Solicitacao[] }) 
                 </Table>
             </div>
 
-            {/* Dialog: Ver detalhes */}
-            <Dialog
-                open={!!verSolicitacao}
-                onOpenChange={(open) => !open && setVerSolicitacao(null)}
-            >
-                {verSolicitacao && (
-                    <DialogContent className="sm:max-w-md">
-                        <DialogHeader>
-                            <DialogTitle>Detalhes da Solicitação</DialogTitle>
-                            <DialogDescription>
-                                Registro #{verSolicitacao.idRegistro}
-                            </DialogDescription>
-                        </DialogHeader>
+            <DetalhesDialog
+                solicitacao={verSolicitacao}
+                onClose={() => setVerSolicitacao(null)}
+            />
 
-                        <div className="space-y-4 py-1 text-sm">
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="space-y-0.5">
-                                    <p className="text-xs text-muted-foreground">Data</p>
-                                    <p>{formatDate(verSolicitacao.data)}</p>
-                                </div>
-                                <div className="space-y-0.5">
-                                    <p className="text-xs text-muted-foreground">Status</p>
-                                    <Badge
-                                        className={
-                                            (
-                                                statusConfig[verSolicitacao.status] ??
-                                                statusConfig.PENDENTE
-                                            ).className
-                                        }
-                                    >
-                                        {
-                                            (
-                                                statusConfig[verSolicitacao.status] ??
-                                                statusConfig.PENDENTE
-                                            ).label
-                                        }
-                                    </Badge>
-                                </div>
-                            </div>
-
-                            <Separator />
-
-                            <div className="space-y-3">
-                                <div className="space-y-0.5">
-                                    <p className="text-xs text-muted-foreground">Nome</p>
-                                    <p className="font-medium">{verSolicitacao.nome}</p>
-                                </div>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div className="space-y-0.5">
-                                        <p className="text-xs text-muted-foreground">CPF</p>
-                                        <p>{verSolicitacao.cpf}</p>
-                                    </div>
-                                    <div className="space-y-0.5">
-                                        <p className="text-xs text-muted-foreground">Telefone</p>
-                                        <p>{verSolicitacao.telefone || '—'}</p>
-                                    </div>
-                                </div>
-                                <div className="space-y-0.5">
-                                    <p className="text-xs text-muted-foreground">E-mail</p>
-                                    <p>{verSolicitacao.email || '—'}</p>
-                                </div>
-                                <div className="space-y-0.5">
-                                    <p className="text-xs text-muted-foreground">Endereço</p>
-                                    <p>{verSolicitacao.endereco}</p>
-                                </div>
-                            </div>
-
-                            <Separator />
-
-                            <div className="space-y-0.5">
-                                <p className="text-xs text-muted-foreground">Especialidade</p>
-                                <p className="font-medium">{verSolicitacao.especialidade}</p>
-                            </div>
-                        </div>
-
-                        <DialogFooter>
-                            <DialogClose asChild>
-                                <Button variant="outline">Fechar</Button>
-                            </DialogClose>
-                        </DialogFooter>
-                    </DialogContent>
-                )}
-            </Dialog>
-
-            {/* Dialog: Enviar nota */}
-            <Dialog open={!!enviarSolicitacao} onOpenChange={handleEnviarClose}>
-                {enviarSolicitacao && (
-                    <DialogContent className="sm:max-w-md">
-                        <form onSubmit={form.handleSubmit(onEnviar)}>
-                            <DialogHeader>
-                                <DialogTitle>Enviar Nota Fiscal</DialogTitle>
-                                <DialogDescription>
-                                    {enviarSolicitacao.nome} — {enviarSolicitacao.especialidade}
-                                </DialogDescription>
-                            </DialogHeader>
-
-                            <div className="space-y-4 py-4">
-                                <Field>
-                                    <FieldLabel htmlFor="linkNota">Link da nota fiscal</FieldLabel>
-                                    <Input
-                                        id="linkNota"
-                                        type="url"
-                                        placeholder="https://..."
-                                        autoComplete="off"
-                                        {...form.register('linkNota')}
-                                    />
-                                    <FieldError errors={[form.formState.errors.linkNota]} />
-                                </Field>
-
-                                {linkNota && (
-                                    <div className="space-y-1.5">
-                                        <p className="text-xs text-muted-foreground">
-                                            Pré-visualização da mensagem
-                                        </p>
-                                        <pre className="whitespace-pre-wrap rounded-xl bg-muted/50 px-3 py-2.5 text-xs text-muted-foreground">
-                                            {buildMensagem(enviarSolicitacao, linkNota)}
-                                        </pre>
-                                    </div>
-                                )}
-                            </div>
-
-                            <DialogFooter>
-                                <DialogClose asChild>
-                                    <Button type="button" variant="outline">
-                                        Cancelar
-                                    </Button>
-                                </DialogClose>
-                                <Button type="submit" disabled={form.formState.isSubmitting}>
-                                    {form.formState.isSubmitting && <Spinner />}
-                                    {form.formState.isSubmitting ? 'Enviando...' : 'Enviar'}
-                                </Button>
-                            </DialogFooter>
-                        </form>
-                    </DialogContent>
-                )}
-            </Dialog>
+            <EnviarNotaDialog
+                solicitacao={enviarSolicitacao}
+                onClose={() => setEnviarSolicitacao(null)}
+            />
         </>
     );
 };
