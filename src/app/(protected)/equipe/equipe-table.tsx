@@ -161,7 +161,7 @@ export const EquipeTable = ({ usuarios }: { usuarios: UsuarioRow[] }) => {
                                     <TableHead key={header.id}>
                                         {flexRender(
                                             header.column.columnDef.header,
-                                            header.getContext(),
+                                            header.getContext()
                                         )}
                                     </TableHead>
                                 ))}
@@ -185,7 +185,7 @@ export const EquipeTable = ({ usuarios }: { usuarios: UsuarioRow[] }) => {
                                         <TableCell key={cell.id}>
                                             {flexRender(
                                                 cell.column.columnDef.cell,
-                                                cell.getContext(),
+                                                cell.getContext()
                                             )}
                                         </TableCell>
                                     ))}
@@ -208,7 +208,7 @@ export const EquipeTable = ({ usuarios }: { usuarios: UsuarioRow[] }) => {
                             size="icon-sm"
                             onClick={() => table.previousPage()}
                             className={cn(
-                                !table.getCanPreviousPage() && 'pointer-events-none opacity-50',
+                                !table.getCanPreviousPage() && 'pointer-events-none opacity-50'
                             )}
                         >
                             <ChevronLeft className="size-4" />
@@ -221,7 +221,7 @@ export const EquipeTable = ({ usuarios }: { usuarios: UsuarioRow[] }) => {
                             size="icon-sm"
                             onClick={() => table.nextPage()}
                             className={cn(
-                                !table.getCanNextPage() && 'pointer-events-none opacity-50',
+                                !table.getCanNextPage() && 'pointer-events-none opacity-50'
                             )}
                         >
                             <ChevronRight className="size-4" />

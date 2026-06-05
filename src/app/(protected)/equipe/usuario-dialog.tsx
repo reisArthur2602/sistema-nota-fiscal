@@ -31,12 +31,23 @@ import { Spinner } from '@/components/ui/spinner';
 import { criarUsuario, editarUsuario } from './actions';
 import type { UsuarioRow } from './equipe-table';
 
-const usuarioSchema = z.object({
-    nome: z.string().min(1, 'Nome é obrigatório.'),
-    usuario: z.string().min(3, 'Usuário deve ter no mínimo 3 caracteres.'),
-    senha: z.string().optional(),
-    role: z.enum(['SUPER_ADMIN', 'RECEPCAO', 'EMISSOR']),
-});
+const usuarioSchema = z
+    .object({
+        nome: z.string().min(1, 'Nome é obrigatório.'),
+        usuario: z.string().min(3, 'Usuário deve ter no mínimo 3 caracteres.'),
+        senha: z.string().optional(),
+        confirmarSenha: z.string().optional(),
+        role: z.enum(['SUPER_ADMIN', 'RECEPCAO', 'EMISSOR']),
+    })
+    .superRefine((data, ctx) => {
+        if (data.senha && data.senha !== data.confirmarSenha) {
+            ctx.addIssue({
+                code: 'custom',
+                message: 'As senhas não coincidem.',
+                path: ['confirmarSenha'],
+            });
+        }
+    });
 
 type UsuarioFormData = z.infer<typeof usuarioSchema>;
 
@@ -53,6 +64,7 @@ export const UsuarioDialog = ({ children, usuario }: Props) => {
         nome: usuario?.nome ?? '',
         usuario: usuario?.usuario ?? '',
         senha: '',
+        confirmarSenha: '',
         role: (usuario?.role ?? 'RECEPCAO') as UsuarioFormData['role'],
     };
 
@@ -72,9 +84,11 @@ export const UsuarioDialog = ({ children, usuario }: Props) => {
             return;
         }
 
+        const { confirmarSenha: _, ...inputData } = data;
+
         const resultado = editando
-            ? await editarUsuario(usuario.id, data)
-            : await criarUsuario(data);
+            ? await editarUsuario(usuario.id, inputData)
+            : await criarUsuario(inputData);
 
         if (!resultado.success) {
             toast.error(resultado.message);
@@ -136,6 +150,17 @@ export const UsuarioDialog = ({ children, usuario }: Props) => {
                                 </FieldDescription>
                             )}
                             <FieldError errors={[form.formState.errors.senha]} />
+                        </Field>
+
+                        <Field>
+                            <FieldLabel htmlFor="confirmarSenha">Confirmar senha</FieldLabel>
+                            <Input
+                                id="confirmarSenha"
+                                type="password"
+                                placeholder="••••••••"
+                                {...form.register('confirmarSenha')}
+                            />
+                            <FieldError errors={[form.formState.errors.confirmarSenha]} />
                         </Field>
 
                         <Field>

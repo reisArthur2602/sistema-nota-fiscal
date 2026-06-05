@@ -100,9 +100,9 @@ const LandingPage = () => {
                 <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,hsl(var(--border)/0.4)_1px,transparent_1px),linear-gradient(to_bottom,hsl(var(--border)/0.4)_1px,transparent_1px)] bg-[size:72px_72px] [mask-image:radial-gradient(ellipse_80%_70%_at_50%_50%,black,transparent)]" />
 
                 {/* Gradient blobs */}
-                <div className="pointer-events-none absolute -left-32 -top-32 size-96 rounded-full bg-primary/15 blur-[100px] animate-pulse" />
-                <div className="pointer-events-none absolute -bottom-16 -right-32 size-[500px] rounded-full bg-primary/10 blur-[120px] animate-pulse [animation-delay:1.5s]" />
-                <div className="pointer-events-none absolute left-1/2 top-0 size-[700px] -translate-x-1/2 rounded-full bg-primary/5 blur-[160px]" />
+                <div className="pointer-events-none absolute -left-32 -top-32 size-96 rounded-full bg-primary/25 blur-[100px] animate-pulse" />
+                <div className="pointer-events-none absolute -bottom-16 -right-32 size-[500px] rounded-full bg-primary/15 blur-[120px] animate-pulse [animation-delay:1.5s]" />
+                <div className="pointer-events-none absolute left-1/2 top-0 size-[700px] -translate-x-1/2 rounded-full bg-primary/10 blur-[160px]" />
 
                 <div className="relative mx-auto max-w-6xl px-6 py-28 text-center md:py-40">
                     <Badge

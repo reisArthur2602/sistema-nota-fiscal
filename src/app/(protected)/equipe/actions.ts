@@ -3,9 +3,9 @@
 import bcrypt from 'bcrypt';
 import { revalidatePath } from 'next/cache';
 
-import { AcaoLog } from '@/generated/prisma/enums';
-import { requirePermission } from '@/utils/require-permission';
+import { AcaoLog, Role } from '@/generated/prisma/enums';
 import prisma from '@/lib/prisma';
+import { requirePermission } from '@/utils/require-permission';
 
 import type { UsuarioRow } from './equipe-columns';
 
@@ -13,7 +13,7 @@ type UsuarioInput = {
     nome: string;
     usuario: string;
     senha?: string;
-    role: 'SUPER_ADMIN' | 'RECEPCAO' | 'EMISSOR';
+    role: Role;
 };
 
 type ActionResult = { success: boolean; message: string };
@@ -23,11 +23,13 @@ export const listarUsuarios = async (): Promise<UsuarioRow[]> => {
 
     return prisma.usuario.findMany({
         select: { id: true, nome: true, usuario: true, role: true, ativo: true },
-        orderBy: { nome: 'asc' },
+        orderBy: { role: 'desc' },
     });
 };
 
-export const criarUsuario = async (input: UsuarioInput): Promise<ActionResult & { id?: string }> => {
+export const criarUsuario = async (
+    input: UsuarioInput
+): Promise<ActionResult & { id?: string }> => {
     const session = await requirePermission(['SUPER_ADMIN']);
 
     const existe = await prisma.usuario.findUnique({ where: { usuario: input.usuario } });
