@@ -27,12 +27,19 @@ export const metadata: Metadata = {
         default: 'NotaFácil — Nota fiscal integrada do registro ao envio',
     },
     description:
-        'Sistema interno de emissão e gerenciamento de notas fiscais. Controle solicitações, emita notas e envie ao paciente em um só lugar.',
-    keywords: ['nota fiscal', 'emissão de notas', 'NF-e', 'gestão de notas fiscais'],
+        'Sistema de emissão e gerenciamento de notas fiscais. Controle solicitações, emita notas e envie ao paciente em um só lugar.',
+    keywords: ['nota fiscal', 'emissão de notas', 'NF-e', 'gestão de notas fiscais', 'notafacil'],
     authors: [{ name: 'NotaFácil' }],
     creator: 'NotaFácil',
+    alternates: {
+        canonical: '/',
+    },
     openGraph: {
+        url: '/',
+        title: 'NotaFácil — Nota fiscal integrada do registro ao envio',
         siteName: 'NotaFácil',
+        description:
+            'Sistema de emissão e gerenciamento de notas fiscais. Controle solicitações, emita notas e envie ao paciente em um só lugar.',
         locale: 'pt_BR',
         type: 'website',
     },
