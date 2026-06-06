@@ -14,9 +14,8 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import { cn } from '@/lib/utils';
 
-import { listarLogs } from './actions';
+import { listarLogsAction } from './actions';
 import { auditoriaColumns } from './auditoria-columns';
 import { AuditoriaTableSkeleton } from './auditoria-table-skeleton';
 
@@ -25,13 +24,12 @@ export const AuditoriaTable = () => {
     const searchParams = useSearchParams();
 
     const usuario = searchParams.get('usuario') ?? undefined;
-    const acao = searchParams.get('acao') ?? undefined;
-    const periodo = searchParams.get('periodo') ?? undefined;
+    const tipo = searchParams.get('tipo') ?? undefined;
     const page = Number(searchParams.get('page') ?? '1');
 
     const { data, isLoading } = useQuery({
-        queryKey: ['logs', { usuario, acao, periodo, page }],
-        queryFn: () => listarLogs({ usuario, acao, periodo, page }),
+        queryKey: ['logs', { usuario, tipo, page }],
+        queryFn: () => listarLogsAction({ usuario, tipo, page }),
         placeholderData: keepPreviousData,
     });
 
@@ -47,44 +45,48 @@ export const AuditoriaTable = () => {
         pageCount: Math.ceil(total / perPage),
     });
 
-    const goToPage = (p: number) => {
+    if (isLoading && !data) return <AuditoriaTableSkeleton />;
+
+    const navigate = (newPage: number) => {
         const params = new URLSearchParams(searchParams.toString());
-        params.set('page', String(p));
+        params.set('page', String(newPage));
         router.replace(`?${params.toString()}`);
     };
 
-    if (isLoading || !data) return <AuditoriaTableSkeleton />;
-
-    const totalPages = Math.ceil(total / perPage);
-    const inicio = total === 0 ? 0 : (page - 1) * perPage + 1;
-    const fim = Math.min(page * perPage, total);
+    const pageCount = Math.ceil(total / perPage) || 1;
 
     return (
-        <>
-            <div className="overflow-hidden rounded-2xl border bg-card">
+        <div className="space-y-4">
+            <div className="rounded-xl border border-border overflow-hidden">
                 <Table>
-                    <TableHeader>
+                    <TableHeader className="bg-muted/30">
                         {table.getHeaderGroups().map((headerGroup) => (
-                            <TableRow key={headerGroup.id}>
+                            <TableRow
+                                key={headerGroup.id}
+                                className="hover:bg-transparent border-b border-border"
+                            >
                                 {headerGroup.headers.map((header) => (
                                     <TableHead key={header.id}>
-                                        {flexRender(
-                                            header.column.columnDef.header,
-                                            header.getContext(),
-                                        )}
+                                        {header.isPlaceholder
+                                            ? null
+                                            : flexRender(
+                                                  header.column.columnDef.header,
+                                                  header.getContext()
+                                              )}
                                     </TableHead>
                                 ))}
                             </TableRow>
                         ))}
                     </TableHeader>
+
                     <TableBody>
-                        {items.length === 0 ? (
+                        {table.getRowModel().rows.length === 0 ? (
                             <TableRow>
                                 <TableCell
                                     colSpan={auditoriaColumns.length}
-                                    className="h-24 text-center text-sm text-muted-foreground"
+                                    className="text-center py-16 text-muted-foreground"
                                 >
-                                    Nenhum registro encontrado para os filtros aplicados.
+                                    Nenhum registro encontrado.
                                 </TableCell>
                             </TableRow>
                         ) : (
@@ -94,7 +96,7 @@ export const AuditoriaTable = () => {
                                         <TableCell key={cell.id}>
                                             {flexRender(
                                                 cell.column.columnDef.cell,
-                                                cell.getContext(),
+                                                cell.getContext()
                                             )}
                                         </TableCell>
                                     ))}
@@ -105,34 +107,33 @@ export const AuditoriaTable = () => {
                 </Table>
             </div>
 
-            {totalPages > 1 && (
-                <div className="flex items-center justify-between text-sm text-muted-foreground">
-                    <p>
-                        {inicio}–{fim} de {total} registro{total !== 1 ? 's' : ''}
-                    </p>
-                    <div className="flex items-center gap-1">
-                        <Button
-                            variant="outline"
-                            size="icon-sm"
-                            onClick={() => goToPage(page - 1)}
-                            className={cn(page <= 1 && 'pointer-events-none opacity-50')}
-                        >
-                            <ChevronLeft className="size-4" />
-                        </Button>
-                        <span className="min-w-16 text-center text-xs">
-                            {page} / {totalPages}
-                        </span>
-                        <Button
-                            variant="outline"
-                            size="icon-sm"
-                            onClick={() => goToPage(page + 1)}
-                            className={cn(page >= totalPages && 'pointer-events-none opacity-50')}
-                        >
-                            <ChevronRight className="size-4" />
-                        </Button>
-                    </div>
+            <div className="flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">
+                    {total} registro{total !== 1 ? 's' : ''} encontrado{total !== 1 ? 's' : ''}
+                </p>
+
+                <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">
+                        Página {page} de {pageCount}
+                    </span>
+                    <Button
+                        variant="outline"
+                        size="icon-sm"
+                        disabled={page <= 1}
+                        onClick={() => navigate(page - 1)}
+                    >
+                        <ChevronLeft className="size-4" />
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="icon-sm"
+                        disabled={page >= pageCount}
+                        onClick={() => navigate(page + 1)}
+                    >
+                        <ChevronRight className="size-4" />
+                    </Button>
                 </div>
-            )}
-        </>
+            </div>
+        </div>
     );
 };

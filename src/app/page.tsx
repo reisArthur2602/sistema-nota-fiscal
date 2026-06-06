@@ -1,318 +1,638 @@
+import { type Metadata } from 'next';
 import {
-    CheckCircle2,
-    ClipboardList,
-    FileCheck,
+    Activity,
+    ArrowRight,
+    CheckCircle,
+    ChevronRight,
+    Download,
     FileText,
-    ScrollText,
-    Search,
-    Send,
+    Link2,
+    Lock,
+    MessageSquare,
     Shield,
+    Star,
+    Upload,
     Users,
     Zap,
 } from 'lucide-react';
-import type { Metadata } from 'next';
 import Link from 'next/link';
 
 import { Logo } from '@/components/logo';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { buttonVariants } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
+import { cn } from '@/lib/utils';
 
 export const metadata: Metadata = {
-    title: 'NotaFácil — Nota fiscal integrada do registro ao envio',
-    openGraph: {
-        title: 'NotaFácil — Nota fiscal integrada',
-        description:
-            'Automatize todo o processo de nota fiscal — da solicitação ao envio ao paciente.',
-        url: '/',
-    },
-    robots: {
-        index: true,
-        follow: false,
-        googleBot: { index: true, follow: false },
-    },
+    title: 'Resultados de exames médicos online',
+    description:
+        'Acesse os resultados dos seus exames médicos online, sem filas e sem espera. Plataforma digital para clínicas e laboratórios distribuírem laudos com segurança.',
 };
 
-const features = [
+/* ─── Dados estáticos ───────────────────────────────────────────── */
+
+const STATS = [
+    { value: '50.000+', label: 'Exames entregues' },
+    { value: '< 5s', label: 'Para acessar o laudo' },
+    { value: '99,9%', label: 'De disponibilidade' },
+    { value: '0', label: 'Laudos perdidos' },
+];
+
+const STEPS = [
     {
-        icon: Search,
-        title: 'Busca automática',
+        step: '01',
+        icon: MessageSquare,
+        title: 'Receba o link',
         description:
-            'Informe o ID do registro e os dados do paciente são preenchidos automaticamente. Zero digitação manual, zero erro humano.',
+            'A clínica ou laboratório envia o link do seu resultado por SMS, e-mail ou impresso no comprovante de atendimento.',
     },
     {
-        icon: FileCheck,
-        title: 'Fila de emissão',
+        step: '02',
+        icon: Shield,
+        title: 'Valide com seus dados',
         description:
-            'O emissor visualiza todas as solicitações em fila, processa e envia o link da nota fiscal por e-mail com um clique.',
+            'O sistema confirma sua identidade pelo CPF e número de protocolo. Sem cadastro, sem senha, sem complicação.',
     },
     {
-        icon: ScrollText,
+        step: '03',
+        icon: Download,
+        title: 'Baixe seu laudo',
+        description:
+            'Com um clique, você baixa o PDF e salva onde quiser — no celular, na nuvem ou envia por e-mail ao seu médico.',
+    },
+];
+
+const CLINIC_FEATURES = [
+    {
+        icon: Upload,
+        title: 'Upload simples',
+        description: 'Envie o PDF do resultado em segundos. Preencha CPF, nome e protocolo — pronto.',
+    },
+    {
+        icon: Link2,
+        title: 'Link instantâneo',
+        description: 'Assim que o upload é confirmado, o link do paciente é gerado automaticamente.',
+    },
+    {
+        icon: Users,
+        title: 'Gestão de equipe',
+        description: 'Controle quem pode fazer upload com perfis de acesso e logs de auditoria completos.',
+    },
+    {
+        icon: Activity,
         title: 'Auditoria completa',
-        description:
-            'Cada ação é registrada com data, hora e responsável. Tenha controle total sobre o que acontece no sistema.',
+        description: 'Saiba exatamente quem acessou cada resultado, quando e de onde.',
+    },
+    {
+        icon: Zap,
+        title: 'Zero infraestrutura',
+        description: 'Sem servidores para configurar. Acesse pelo navegador de qualquer computador da clínica.',
+    },
+    {
+        icon: Lock,
+        title: 'LGPD ready',
+        description: 'Dados dos pacientes protegidos conforme a Lei Geral de Proteção de Dados.',
     },
 ];
 
-const steps = [
+const SECURITY_POINTS = [
+    { text: 'Acesso por CPF + protocolo único por exame' },
+    { text: 'Cada exame tem link exclusivo e intransferível' },
+    { text: 'Logs completos de quem baixou e quando' },
+    { text: 'Inativação de acesso com um clique' },
+    { text: 'Nenhum dado de paciente é indexado por buscadores' },
+    { text: 'Conformidade com a LGPD e regulamentos de saúde' },
+];
+
+const TESTIMONIALS = [
     {
-        icon: ClipboardList,
-        title: 'Recepção solicita',
-        description:
-            'A recepção busca o registro do paciente pelo ID, confirma os dados e envia a solicitação para a fila de emissão.',
+        name: 'Maria Souza',
+        role: 'Paciente',
+        text: 'Recebi o link no WhatsApp e em 10 segundos já tinha o resultado na mão. Nunca mais precisei voltar à clínica só para pegar papel.',
     },
     {
-        icon: FileText,
-        title: 'Emissor processa',
-        description:
-            'O emissor visualiza as solicitações pendentes, emite a nota no sistema externo e insere o link para envio.',
+        name: 'Dr. Carlos Lima',
+        role: 'Coordenador de laboratório',
+        text: 'Reduziu em 80% as ligações de pacientes perguntando sobre resultados. A equipe ganhou tempo para o que realmente importa.',
     },
     {
-        icon: Send,
-        title: 'Paciente recebe',
-        description:
-            'O sistema envia automaticamente o e-mail ao paciente com o link da nota fiscal e atualiza o status.',
+        name: 'Ana Pereira',
+        role: 'Paciente',
+        text: 'Meu médico pediu o resultado na consulta. Abri o link no celular e mandei o PDF direto pelo WhatsApp. Simples assim.',
     },
 ];
 
-const extras = [
-    { icon: Shield, text: 'Controle de acesso por perfil' },
-    { icon: Zap, text: 'Notificações em tempo real' },
-    { icon: Users, text: 'Múltiplos usuários simultâneos' },
-    { icon: CheckCircle2, text: 'Status atualizado automaticamente' },
-];
+/* ─── Componentes auxiliares ────────────────────────────────────── */
 
-const LandingPage = () => {
-    return (
-        <div className="flex-1 bg-background">
-            {/* Nav */}
-            <header className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur-sm">
-                <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
-                    <Logo />
-                    <Button asChild size="sm">
-                        <Link href="/login">Acessar o sistema</Link>
-                    </Button>
-                </div>
-            </header>
+const NavLink = ({ href, children }: { href: string; children: React.ReactNode }) => (
+    <a
+        href={href}
+        className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-150"
+    >
+        {children}
+    </a>
+);
 
-            {/* Hero */}
-            <section className="relative overflow-hidden border-b">
-                {/* Grid pattern */}
-                <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,hsl(var(--border)/0.4)_1px,transparent_1px),linear-gradient(to_bottom,hsl(var(--border)/0.4)_1px,transparent_1px)] bg-[size:72px_72px] [mask-image:radial-gradient(ellipse_80%_70%_at_50%_50%,black,transparent)]" />
+const SectionBadge = ({ children }: { children: React.ReactNode }) => (
+    <Badge variant="secondary" className="mb-4 uppercase tracking-wider text-xs">
+        {children}
+    </Badge>
+);
 
-                {/* Gradient blobs */}
-                <div className="pointer-events-none absolute -left-32 -top-32 size-96 rounded-full bg-primary/25 blur-[100px] animate-pulse" />
-                <div className="pointer-events-none absolute -bottom-16 -right-32 size-[500px] rounded-full bg-primary/15 blur-[120px] animate-pulse [animation-delay:1.5s]" />
-                <div className="pointer-events-none absolute left-1/2 top-0 size-[700px] -translate-x-1/2 rounded-full bg-primary/10 blur-[160px]" />
+/* ─── Page ──────────────────────────────────────────────────────── */
 
-                <div className="relative mx-auto max-w-6xl px-6 py-28 text-center md:py-40">
-                    <Badge
-                        variant="outline"
-                        className="mb-7 animate-fade-down border-primary/30 bg-primary/5 text-sm text-primary"
+const HomePage = () => (
+    <div className="min-h-dvh flex flex-col bg-background">
+        {/* ── NAVBAR ─────────────────────────────────────────────── */}
+        <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-md">
+            <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+                <Logo size="sm" />
+
+                <nav className="hidden md:flex items-center gap-8">
+                    <NavLink href="#como-funciona">Como funciona</NavLink>
+                    <NavLink href="#para-clinicas">Para clínicas</NavLink>
+                    <NavLink href="#seguranca">Segurança</NavLink>
+                </nav>
+
+                <div className="flex items-center gap-2">
+                    <Link
+                        href="/login"
+                        className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }))}
                     >
-                        <span className="mr-2 inline-block size-1.5 animate-pulse rounded-full bg-primary" />
-                        Ferramenta interna
-                    </Badge>
+                        Entrar
+                    </Link>
+                    <Link
+                        href="/exame"
+                        className={cn(buttonVariants({ size: 'sm' }))}
+                    >
+                        <Download className="size-3.5" />
+                        Acessar exame
+                    </Link>
+                </div>
+            </div>
+        </header>
 
-                    <h1 className="animate-fade-up text-5xl font-bold tracking-tight text-foreground md:text-7xl [animation-delay:100ms]">
-                        Nota fiscal integrada
-                        <br />
-                        <span className="bg-gradient-to-r from-primary via-primary/80 to-primary/50 bg-clip-text text-transparent">
-                            do registro ao envio.
+        {/* ── HERO ───────────────────────────────────────────────── */}
+        <section className="relative overflow-hidden bg-background">
+            {/* Glow radial superior */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-3xl h-96 pointer-events-none">
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 size-150 rounded-full bg-primary/20 blur-3xl" />
+                <div className="absolute top-8 left-1/2 -translate-x-1/2 size-80 rounded-full bg-indigo-500/15 blur-2xl" />
+            </div>
+
+            {/* Grade decorativa */}
+            <div className="absolute inset-0 pointer-events-none bg-grid-pattern" />
+
+            {/* Conteúdo centralizado */}
+            <div className="relative max-w-4xl mx-auto px-6 pt-20 pb-12 lg:pt-28 lg:pb-16 text-center">
+                {/* Badge */}
+                <div className="inline-flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-full px-4 py-1.5 mb-8">
+                    <span className="size-2 rounded-full bg-green-400 animate-pulse" />
+                    <span className="text-primary text-sm font-medium">Plataforma online 24h</span>
+                </div>
+
+                {/* Headline */}
+                <h1 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold text-foreground leading-[1.05] tracking-tight mb-6">
+                    Seu laudo médico,{' '}
+                    <span className="bg-linear-to-r from-blue-400 via-primary to-indigo-400 bg-clip-text text-transparent">
+                        online
+                    </span>{' '}
+                    e seguro.
+                </h1>
+
+                <p className="text-lg lg:text-xl text-muted-foreground mb-10 max-w-2xl mx-auto leading-relaxed">
+                    A clínica envia o link — você acessa o resultado em segundos, de qualquer dispositivo, sem criar conta.
+                </p>
+
+                {/* CTAs */}
+                <div className="flex flex-col sm:flex-row gap-3 justify-center mb-10">
+                    <Link
+                        href="/exame"
+                        className={cn(
+                            buttonVariants({ size: 'lg' }),
+                            'gap-2 shadow-lg shadow-primary/30 font-semibold',
+                        )}
+                    >
+                        <Download className="size-4" />
+                        Acessar meu exame
+                    </Link>
+                    <Link
+                        href="/login"
+                        className={cn(buttonVariants({ size: 'lg', variant: 'outline' }), 'gap-2')}
+                    >
+                        Sou profissional de saúde
+                        <ArrowRight className="size-4" />
+                    </Link>
+                </div>
+
+                {/* Trust signals */}
+                <div className="flex flex-wrap items-center gap-6 justify-center text-muted-foreground text-sm">
+                    {['Sem cadastro', 'Sem senha', 'Acesso imediato', '100% seguro'].map((item) => (
+                        <span key={item} className="flex items-center gap-1.5">
+                            <CheckCircle className="size-3.5 text-green-500" />
+                            {item}
                         </span>
-                    </h1>
-
-                    <p className="mx-auto mt-7 max-w-xl animate-fade-up text-lg text-muted-foreground [animation-delay:200ms]">
-                        Automatize todo o processo — da solicitação à entrega ao paciente — sem
-                        planilhas, sem retrabalho e com rastreabilidade completa.
-                    </p>
-
-                    <div className="mt-10 animate-fade-up [animation-delay:300ms]">
-                        <Button asChild size="lg" className="shadow-lg shadow-primary/20">
-                            <Link href="/login">Acessar o sistema</Link>
-                        </Button>
-                    </div>
-
-                    <div className="mt-16 flex animate-fade-up flex-wrap items-center justify-center gap-x-10 gap-y-4 text-sm text-muted-foreground [animation-delay:400ms]">
-                        {[
-                            '3 perfis de acesso',
-                            'Envio automático por e-mail',
-                            'Histórico auditável',
-                        ].map((item) => (
-                            <span key={item} className="flex items-center gap-2">
-                                <CheckCircle2 className="size-4 text-primary" />
-                                {item}
-                            </span>
-                        ))}
-                    </div>
+                    ))}
                 </div>
-            </section>
+            </div>
 
-            {/* Features */}
-            <section className="mx-auto max-w-6xl px-6 py-28">
-                <div className="mb-16 text-center">
-                    <h2 className="text-3xl font-bold tracking-tight md:text-4xl">
-                        Tudo o que sua equipe precisa
-                    </h2>
-                    <p className="mt-4 text-muted-foreground">
-                        Projetado para o fluxo real de emissão de nota fiscal da sua empresa.
-                    </p>
-                </div>
+            {/* Mockup em perspectiva 3D */}
+            <div className="relative max-w-5xl mx-auto px-4 sm:px-6">
+                {/* Glow atrás do mockup */}
+                <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-3/4 h-40 bg-primary/15 blur-3xl rounded-full pointer-events-none" />
 
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-                    {features.map(({ icon: Icon, title, description }) => (
-                        <div
-                            key={title}
-                            className="group rounded-2xl border bg-card p-8 transition-all duration-300 hover:-translate-y-1.5 hover:border-primary/20 hover:shadow-xl hover:shadow-primary/5"
-                        >
-                            <div className="mb-5 flex size-12 items-center justify-center rounded-xl bg-primary/10 transition-all duration-300 group-hover:scale-110 group-hover:bg-primary/20">
-                                <Icon className="size-6 text-primary" />
+                <div style={{ perspective: '1400px' }}>
+                    <div
+                        className="relative rounded-2xl border border-border/60 bg-card shadow-2xl overflow-hidden"
+                        style={{ transform: 'rotateX(6deg) scale(0.98)', transformOrigin: 'top center' }}
+                    >
+                        {/* Barra de browser */}
+                        <div className="flex items-center gap-3 px-4 py-3 bg-muted/60 border-b border-border">
+                            <div className="flex gap-1.5 shrink-0">
+                                <div className="size-3 rounded-full bg-red-500/50" />
+                                <div className="size-3 rounded-full bg-yellow-500/50" />
+                                <div className="size-3 rounded-full bg-green-500/50" />
                             </div>
-                            <h3 className="mb-2 font-semibold">{title}</h3>
-                            <p className="text-sm leading-relaxed text-muted-foreground">
-                                {description}
-                            </p>
+                            <div className="flex-1 bg-background/60 border border-border/50 rounded-md h-6 flex items-center px-3 min-w-0">
+                                <Lock className="size-3 text-muted-foreground mr-1.5 shrink-0" />
+                                <span className="text-muted-foreground text-xs font-mono truncate">
+                                    meuexame.com.br/exame?c=12345678900&amp;p=2026-4892
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Conteúdo do mockup */}
+                        <div className="bg-muted/20 px-6 py-8 flex flex-col lg:flex-row gap-6 items-start min-h-64">
+                            {/* Card resultado */}
+                            <div className="w-full lg:max-w-sm shrink-0 rounded-2xl border border-border bg-background overflow-hidden shadow-sm">
+                                <div className="px-5 py-4 border-b border-border bg-muted/20 flex items-center gap-3">
+                                    <div className="size-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                                        <Download className="size-4 text-primary" />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-semibold text-foreground">Resultado de exame</p>
+                                        <p className="text-xs text-muted-foreground">Olá, Maria!</p>
+                                    </div>
+                                    <span className="ml-auto shrink-0 bg-green-500/15 text-green-400 border border-green-500/20 text-xs rounded-full px-2.5 py-0.5 font-medium">
+                                        Disponível
+                                    </span>
+                                </div>
+                                <div className="px-5 py-4 space-y-3">
+                                    {[
+                                        { label: 'Paciente', value: 'Maria da Silva' },
+                                        { label: 'CPF', value: '•••.456.789-••' },
+                                        { label: 'Protocolo', value: '2026-4892' },
+                                        { label: 'Cadastrado em', value: '6 de junho de 2026' },
+                                    ].map((row) => (
+                                        <div key={row.label} className="flex items-start gap-3">
+                                            <p className="w-24 shrink-0 text-xs text-muted-foreground pt-0.5">
+                                                {row.label}
+                                            </p>
+                                            <p className="text-sm font-medium text-foreground">{row.value}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="px-5 pb-5">
+                                    <div className="bg-primary text-primary-foreground rounded-xl py-3 text-sm font-semibold flex items-center justify-center gap-2">
+                                        <Download className="size-4" />
+                                        Baixar resultado em PDF
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Painel lateral — atividade (só desktop) */}
+                            <div className="hidden lg:flex flex-col flex-1 gap-4">
+                                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                    Atividade recente
+                                </p>
+                                {[
+                                    { icon: Download, color: 'text-green-400 bg-green-500/10', text: 'Maria da Silva baixou o resultado', time: 'agora' },
+                                    { icon: Upload, color: 'text-primary bg-primary/10', text: 'Dr. João enviou novo exame — Protocolo #4893', time: '2 min' },
+                                    { icon: Shield, color: 'text-blue-400 bg-blue-500/10', text: 'Acesso validado via CPF + protocolo', time: '5 min' },
+                                    { icon: FileText, color: 'text-indigo-400 bg-indigo-500/10', text: 'Carlos Souza acessou o resultado', time: '12 min' },
+                                ].map((item, i) => (
+                                    <div key={i} className="flex items-start gap-3 p-3 rounded-xl border border-border bg-background/50">
+                                        <div className={cn('size-7 rounded-lg flex items-center justify-center shrink-0', item.color)}>
+                                            <item.icon className="size-3.5" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-xs text-foreground leading-relaxed">{item.text}</p>
+                                            <p className="text-xs text-muted-foreground mt-0.5">{item.time}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Fade de saída */}
+                <div className="absolute inset-x-0 bottom-0 h-24 bg-linear-to-b from-transparent to-background pointer-events-none" />
+            </div>
+        </section>
+
+        {/* ── STATS BAR ──────────────────────────────────────────── */}
+        <section className="py-12 bg-muted/40 border-b border-border">
+            <div className="max-w-5xl mx-auto px-6">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 text-center">
+                    {STATS.map((stat) => (
+                        <div key={stat.label}>
+                            <p className="text-3xl font-extrabold text-foreground mb-1">{stat.value}</p>
+                            <p className="text-sm text-muted-foreground">{stat.label}</p>
                         </div>
                     ))}
                 </div>
-            </section>
+            </div>
+        </section>
 
-            {/* How it works */}
-            <section className="relative overflow-hidden border-y bg-muted/30">
-                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_50%,hsl(var(--primary)/0.04),transparent)]" />
+        {/* ── HOW IT WORKS ───────────────────────────────────────── */}
+        <section id="como-funciona" className="py-24 bg-background">
+            <div className="max-w-6xl mx-auto px-6">
+                <div className="text-center mb-16">
+                    <SectionBadge>Para pacientes</SectionBadge>
+                    <h2 className="text-3xl lg:text-4xl font-bold text-foreground mb-4">
+                        3 passos para acessar seu resultado
+                    </h2>
+                    <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+                        O processo foi pensado para ser o mais simples possível. Qualquer pessoa consegue acessar seu laudo sem ajuda.
+                    </p>
+                </div>
 
-                <div className="relative mx-auto max-w-6xl px-6 py-28">
-                    <div className="mb-16 text-center">
-                        <h2 className="text-3xl font-bold tracking-tight md:text-4xl">
-                            Como funciona
+                <div className="grid lg:grid-cols-3 gap-8">
+                    {STEPS.map((step, i) => (
+                        <div key={step.step} className="relative">
+                            {/* Connector line (desktop) */}
+                            {i < STEPS.length - 1 && (
+                                <div className="hidden lg:block absolute top-8 left-[calc(100%-16px)] w-8 h-px bg-border z-10" />
+                            )}
+
+                            <div className="bg-card border border-border rounded-2xl p-8 h-full hover:border-primary/30 hover:shadow-md transition-all duration-200">
+                                <div className="flex items-start gap-4 mb-5">
+                                    <div className="relative">
+                                        <div className="size-14 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
+                                            <step.icon className="size-6 text-primary" />
+                                        </div>
+                                        <span className="absolute -top-2 -right-2 size-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center">
+                                            {i + 1}
+                                        </span>
+                                    </div>
+                                </div>
+                                <h3 className="text-lg font-bold text-foreground mb-2">{step.title}</h3>
+                                <p className="text-muted-foreground text-sm leading-relaxed">{step.description}</p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                {/* Example link box */}
+                <div className="mt-12 max-w-2xl mx-auto bg-muted/50 border border-border rounded-2xl p-6">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                        Exemplo de link que você recebe
+                    </p>
+                    <code className="block text-sm text-primary font-mono bg-primary/5 border border-primary/15 rounded-xl px-4 py-3 break-all">
+                        meuexame.com.br/exame?c=12345678900&amp;p=2026-4892
+                    </code>
+                    <p className="text-xs text-muted-foreground mt-3 flex flex-wrap gap-4">
+                        <span>
+                            <span className="font-semibold text-foreground">c=</span> seu CPF (sem pontos)
+                        </span>
+                        <span>
+                            <span className="font-semibold text-foreground">p=</span> número do protocolo
+                        </span>
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        {/* ── FOR CLINICS ────────────────────────────────────────── */}
+        <section id="para-clinicas" className="py-24 bg-muted/30 border-y border-border">
+            <div className="max-w-6xl mx-auto px-6">
+                <div className="grid lg:grid-cols-2 gap-16 items-center">
+                    {/* Copy */}
+                    <div>
+                        <SectionBadge>Para clínicas e laboratórios</SectionBadge>
+                        <h2 className="text-3xl lg:text-4xl font-bold text-foreground mb-5 leading-tight">
+                            Distribua laudos digitalmente e elimine filas no guichê
                         </h2>
-                        <p className="mt-4 text-muted-foreground">
-                            Três etapas simples, do início ao fim.
+                        <p className="text-muted-foreground text-lg mb-6 leading-relaxed">
+                            Reduza o volume de chamadas e visitas de pacientes pedindo resultados. Sua equipe ganha tempo — o paciente ganha comodidade.
                         </p>
+
+                        <ul className="space-y-3 mb-8">
+                            {[
+                                'Cadastro de exame em menos de 30 segundos',
+                                'Link gerado automaticamente para o paciente',
+                                'Auditoria completa de acessos',
+                                'Controle de equipe com perfis de permissão',
+                                'Inativação de acesso a qualquer momento',
+                            ].map((item) => (
+                                <li key={item} className="flex items-start gap-3">
+                                    <CheckCircle className="size-4 text-primary mt-0.5 shrink-0" />
+                                    <span className="text-sm text-foreground">{item}</span>
+                                </li>
+                            ))}
+                        </ul>
+
+                        <Link
+                            href="/login"
+                            className={cn(buttonVariants({ size: 'lg' }), 'gap-2')}
+                        >
+                            Acessar o sistema
+                            <ChevronRight className="size-4" />
+                        </Link>
                     </div>
 
-                    <div className="grid grid-cols-1 gap-10 md:grid-cols-3">
-                        {steps.map(({ icon: Icon, title, description }, i) => (
+                    {/* Feature grid */}
+                    <div className="grid grid-cols-2 gap-4">
+                        {CLINIC_FEATURES.map((feature) => (
                             <div
-                                key={title}
-                                className="relative flex flex-col items-center text-center"
+                                key={feature.title}
+                                className="bg-card border border-border rounded-xl p-5 hover:border-primary/40 hover:shadow-sm transition-all duration-200"
                             >
-                                {i < steps.length - 1 && (
-                                    <div className="absolute left-1/2 top-7 hidden h-px w-full translate-x-8 bg-gradient-to-r from-primary/30 via-primary/10 to-transparent md:block" />
-                                )}
-
-                                <div className="relative z-10 mb-5 flex size-14 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 ring-1 ring-primary/20 transition-all duration-300 hover:scale-110 hover:from-primary/30 hover:to-primary/10">
-                                    <Icon className="size-6 text-primary" />
-                                    <span className="absolute -right-1.5 -top-1.5 flex size-6 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground shadow-sm">
-                                        {i + 1}
-                                    </span>
+                                <div className="size-9 rounded-lg bg-primary/10 flex items-center justify-center mb-3">
+                                    <feature.icon className="size-4 text-primary" />
                                 </div>
-
-                                <h3 className="mb-2 font-semibold">{title}</h3>
-                                <p className="text-sm leading-relaxed text-muted-foreground">
-                                    {description}
-                                </p>
+                                <h3 className="font-semibold text-sm text-foreground mb-1">{feature.title}</h3>
+                                <p className="text-xs text-muted-foreground leading-relaxed">{feature.description}</p>
                             </div>
                         ))}
                     </div>
                 </div>
-            </section>
+            </div>
+        </section>
 
-            {/* Extras + Roles */}
-            <section className="mx-auto max-w-6xl px-6 py-28">
-                <div className="grid grid-cols-1 items-center gap-16 md:grid-cols-2">
-                    <div>
-                        <h2 className="text-3xl font-bold tracking-tight md:text-4xl">
-                            Controle e visibilidade{' '}
-                            <span className="bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-                                em tempo real
-                            </span>
-                        </h2>
-                        <p className="mt-4 text-muted-foreground">
-                            Cada perfil tem acesso exatamente ao que precisa. Agilidade sem abrir
-                            mão do controle.
-                        </p>
-
-                        <ul className="mt-8 space-y-3">
-                            {extras.map(({ icon: Icon, text }) => (
-                                <li key={text} className="group flex items-center gap-3 text-sm">
-                                    <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 transition-colors duration-200 group-hover:bg-primary/20">
-                                        <Icon className="size-4 text-primary" />
-                                    </div>
-                                    <span>{text}</span>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-
-                    <div className="rounded-2xl border bg-card p-8 shadow-sm">
-                        <p className="mb-6 text-xs font-semibold uppercase tracking-widest text-muted-foreground/60">
-                            Perfis de acesso
-                        </p>
-                        <div className="space-y-3">
-                            {[
-                                {
-                                    role: 'Recepção',
-                                    desc: 'Cria e acompanha solicitações de nota fiscal.',
-                                    className: 'bg-muted/60 text-muted-foreground',
-                                },
-                                {
-                                    role: 'Emissor',
-                                    desc: 'Processa a fila e envia as notas aos pacientes.',
-                                    className: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
-                                },
-                                {
-                                    role: 'Super Admin',
-                                    desc: 'Gerencia a equipe e acessa o histórico de auditoria.',
-                                    className: 'bg-primary/10 text-primary',
-                                },
-                            ].map(({ role, desc, className }) => (
-                                <div
-                                    key={role}
-                                    className="flex items-start gap-3 rounded-xl border bg-muted/20 p-4 transition-colors duration-200 hover:bg-muted/40"
-                                >
-                                    <span
-                                        className={`mt-0.5 shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${className}`}
-                                    >
-                                        {role}
-                                    </span>
-                                    <p className="text-sm text-muted-foreground">{desc}</p>
+        {/* ── SECURITY ───────────────────────────────────────────── */}
+        <section id="seguranca" className="py-24 bg-background">
+            <div className="max-w-6xl mx-auto px-6">
+                <div className="grid lg:grid-cols-2 gap-16 items-center">
+                    {/* Visual */}
+                    <div className="order-2 lg:order-1">
+                        <div className="bg-card border border-border rounded-2xl p-8 space-y-4">
+                            <div className="flex items-center gap-3 pb-4 border-b border-border">
+                                <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                                    <Shield className="size-5 text-primary" />
+                                </div>
+                                <div>
+                                    <p className="font-semibold text-foreground text-sm">Central de segurança</p>
+                                    <p className="text-xs text-muted-foreground">Protocolos ativos</p>
+                                </div>
+                                <span className="ml-auto size-2.5 rounded-full bg-green-500 animate-pulse" />
+                            </div>
+                            {SECURITY_POINTS.map((point) => (
+                                <div key={point.text} className="flex items-start gap-3">
+                                    <CheckCircle className="size-4 text-green-500 shrink-0 mt-0.5" />
+                                    <p className="text-sm text-foreground">{point.text}</p>
                                 </div>
                             ))}
                         </div>
                     </div>
+
+                    {/* Copy */}
+                    <div className="order-1 lg:order-2">
+                        <SectionBadge>Segurança &amp; privacidade</SectionBadge>
+                        <h2 className="text-3xl lg:text-4xl font-bold text-foreground mb-5 leading-tight">
+                            Dados médicos merecem proteção máxima
+                        </h2>
+                        <p className="text-muted-foreground text-lg mb-5 leading-relaxed">
+                            Cada exame possui um link exclusivo protegido por CPF e protocolo. Sem conta, sem senha compartilhada — apenas você acessa o seu resultado.
+                        </p>
+                        <p className="text-muted-foreground leading-relaxed">
+                            Todas as operações são registradas em log de auditoria. A clínica pode inativar o acesso a qualquer momento, e os dados nunca são indexados por buscadores.
+                        </p>
+                    </div>
                 </div>
-            </section>
+            </div>
+        </section>
 
-            {/* CTA */}
-            <section className="relative overflow-hidden border-t">
-                <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-muted/50 to-background" />
-                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_60%_80%_at_50%_100%,hsl(var(--primary)/0.08),transparent)]" />
-                <div className="pointer-events-none absolute left-1/2 top-0 size-[500px] -translate-x-1/2 rounded-full bg-primary/5 blur-[120px]" />
-
-                <div className="relative mx-auto max-w-6xl px-6 py-28 text-center">
-                    <h2 className="text-3xl font-bold tracking-tight md:text-4xl">
-                        Pronto para começar?
+        {/* ── TESTIMONIALS ───────────────────────────────────────── */}
+        <section className="py-24 bg-muted/30 border-y border-border">
+            <div className="max-w-6xl mx-auto px-6">
+                <div className="text-center mb-14">
+                    <SectionBadge>Depoimentos</SectionBadge>
+                    <h2 className="text-3xl lg:text-4xl font-bold text-foreground">
+                        O que dizem quem usa
                     </h2>
-                    <p className="mt-4 text-muted-foreground">
-                        Acesse o sistema com as credenciais fornecidas pelo administrador.
-                    </p>
-                    <Button asChild size="lg" className="mt-10 shadow-lg shadow-primary/20">
-                        <Link href="/login">Entrar na plataforma</Link>
-                    </Button>
                 </div>
-            </section>
 
-            {/* Footer */}
-            <footer className="border-t">
-                <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
-                    <Logo iconClassName="size-5" textClassName="text-xs" />
-                    <p className="text-xs text-muted-foreground">
-                        Uso interno — todos os direitos reservados.
-                    </p>
+                <div className="grid md:grid-cols-3 gap-6">
+                    {TESTIMONIALS.map((t) => (
+                        <div
+                            key={t.name}
+                            className="bg-card border border-border rounded-2xl p-7 flex flex-col hover:shadow-md hover:border-border/80 transition-all duration-200"
+                        >
+                            <div className="flex gap-0.5 mb-4">
+                                {Array.from({ length: 5 }).map((_, i) => (
+                                    <Star key={i} className="size-4 fill-yellow-400 text-yellow-400" />
+                                ))}
+                            </div>
+                            <p className="text-foreground text-sm leading-relaxed flex-1 mb-6">
+                                &ldquo;{t.text}&rdquo;
+                            </p>
+                            <div className="flex items-center gap-3 pt-4 border-t border-border">
+                                <div className="size-9 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
+                                    <span className="text-primary font-bold text-sm">{t.name.charAt(0)}</span>
+                                </div>
+                                <div>
+                                    <p className="text-sm font-semibold text-foreground">{t.name}</p>
+                                    <p className="text-xs text-muted-foreground">{t.role}</p>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
                 </div>
-            </footer>
-        </div>
-    );
-};
+            </div>
+        </section>
 
-export default LandingPage;
+        {/* ── FINAL CTA ──────────────────────────────────────────── */}
+        <section className="py-24 bg-linear-to-br from-primary via-primary/90 to-indigo-900 relative overflow-hidden">
+            <div className="absolute inset-0 pointer-events-none">
+                <div className="absolute top-0 right-0 size-80 rounded-full bg-white/5 blur-3xl" />
+                <div className="absolute bottom-0 left-0 size-60 rounded-full bg-indigo-400/10 blur-3xl" />
+            </div>
+
+            <div className="relative max-w-4xl mx-auto px-6 text-center">
+                <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white mb-5 leading-tight">
+                    Pronto para acessar<br className="hidden sm:block" /> seu resultado?
+                </h2>
+                <p className="text-white/70 text-lg mb-10 max-w-xl mx-auto">
+                    Use o link que você recebeu da clínica — sem cadastro, sem senha.
+                </p>
+
+                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                    <Link
+                        href="/exame"
+                        className={cn(
+                            buttonVariants({ size: 'lg' }),
+                            'bg-white text-primary hover:bg-white/90 font-semibold shadow-lg shadow-black/20 gap-2',
+                        )}
+                    >
+                        <Download className="size-4" />
+                        Acessar meu exame
+                    </Link>
+                    <Link
+                        href="/login"
+                        className={cn(
+                            buttonVariants({ size: 'lg', variant: 'outline' }),
+                            'border-white/30 text-white hover:bg-white/10 hover:text-white gap-2',
+                        )}
+                    >
+                        Sou profissional de saúde
+                        <ChevronRight className="size-4" />
+                    </Link>
+                </div>
+            </div>
+        </section>
+
+        {/* ── FOOTER ─────────────────────────────────────────────── */}
+        <footer className="bg-card border-t border-border py-14">
+            <div className="max-w-7xl mx-auto px-6">
+                <div className="grid md:grid-cols-4 gap-10 mb-10">
+                    <div className="md:col-span-2">
+                        <Logo className="mb-4" />
+                        <p className="text-muted-foreground text-sm max-w-xs leading-relaxed">
+                            Plataforma digital para distribuição segura de resultados de exames médicos. Rápido, simples e seguro.
+                        </p>
+                    </div>
+
+                    <div>
+                        <p className="font-semibold text-foreground text-sm mb-4 uppercase tracking-wider">Plataforma</p>
+                        <ul className="space-y-3 text-sm text-muted-foreground">
+                            <li><a href="#como-funciona" className="hover:text-foreground transition-colors">Como funciona</a></li>
+                            <li><a href="#para-clinicas" className="hover:text-foreground transition-colors">Para clínicas</a></li>
+                            <li><a href="#seguranca" className="hover:text-foreground transition-colors">Segurança</a></li>
+                            <li>
+                                <Link href="/login" className="hover:text-foreground transition-colors">
+                                    Acessar sistema
+                                </Link>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div>
+                        <p className="font-semibold text-foreground text-sm mb-4 uppercase tracking-wider">Contato</p>
+                        <ul className="space-y-3 text-sm text-muted-foreground">
+                            <li>contato@meuexame.com.br</li>
+                            <li>Suporte 24 horas</li>
+                            <li className="flex items-center gap-2">
+                                <Lock className="size-3.5 text-primary" />
+                                <span>Dados protegidos</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <Separator className="mb-8" />
+
+                <div className="flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-muted-foreground">
+                    <p>© 2026 MeuExame. Todos os direitos reservados.</p>
+                    <div className="flex gap-6">
+                        <a href="#" className="hover:text-foreground transition-colors">Privacidade</a>
+                        <a href="#" className="hover:text-foreground transition-colors">Termos de uso</a>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
+);
+
+export default HomePage;

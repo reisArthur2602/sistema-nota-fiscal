@@ -1,100 +1,182 @@
-import type { Metadata } from 'next';
+import { ArrowLeft, CheckCircle, Download, FileText, Shield, Upload } from 'lucide-react';
+import { type Metadata } from 'next';
+import Link from 'next/link';
+import { redirect } from 'next/navigation';
 
 import { Logo } from '@/components/logo';
-import { redirectIfAuthenticated } from '@/utils/redirect-if-authenticated';
+import { getSession } from '@/utils/session';
 
 import { LoginForm } from './login-form';
 
 export const metadata: Metadata = {
     title: 'Entrar',
+    description: 'Acesse o sistema MeuExame com suas credenciais.',
 };
 
+/* ── Cards decorativos flutuantes ────────────────────────────────── */
+
+const FloatingExamCard = () => (
+    <div className="rounded-2xl border border-border bg-card shadow-xl overflow-hidden w-72">
+        <div className="px-4 py-3 border-b border-border bg-muted/30 flex items-center gap-2.5">
+            <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                <FileText className="size-3.5 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-foreground truncate">Resultado de exame</p>
+                <p className="text-[10px] text-muted-foreground">Protocolo #2026-4892</p>
+            </div>
+            <span className="shrink-0 bg-green-500/15 text-green-400 border border-green-500/20 text-[10px] rounded-full px-2 py-0.5 font-medium">
+                Disponível
+            </span>
+        </div>
+        <div className="px-4 py-3 space-y-2.5">
+            {[
+                { label: 'Paciente', value: 'Maria da Silva' },
+                { label: 'CPF', value: '•••.456.789-••' },
+                { label: 'Protocolo', value: '2026-4892' },
+            ].map((row) => (
+                <div key={row.label} className="flex items-center gap-3">
+                    <p className="w-16 shrink-0 text-[10px] text-muted-foreground">{row.label}</p>
+                    <p className="text-xs font-medium text-foreground">{row.value}</p>
+                </div>
+            ))}
+        </div>
+        <div className="px-4 pb-4">
+            <div className="bg-primary/10 border border-primary/20 text-primary rounded-xl py-2 text-xs font-semibold flex items-center justify-center gap-1.5">
+                <Download className="size-3" />
+                Baixar PDF
+            </div>
+        </div>
+    </div>
+);
+
+const FloatingActivityCard = () => (
+    <div className="rounded-2xl border border-border bg-card shadow-xl p-4 w-64 space-y-3">
+        <div className="flex items-center justify-between mb-1">
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                Atividade recente
+            </p>
+            <span className="size-2 rounded-full bg-green-500 animate-pulse" />
+        </div>
+        {[
+            {
+                icon: Download,
+                color: 'text-green-400 bg-green-500/10',
+                text: 'Maria baixou o resultado',
+                time: 'agora',
+            },
+            {
+                icon: Upload,
+                color: 'text-primary bg-primary/10',
+                text: 'Novo exame cadastrado',
+                time: '3 min',
+            },
+            {
+                icon: Shield,
+                color: 'text-blue-400 bg-blue-500/10',
+                text: 'Acesso validado com CPF',
+                time: '8 min',
+            },
+            {
+                icon: CheckCircle,
+                color: 'text-indigo-400 bg-indigo-500/10',
+                text: 'Auditoria registrada',
+                time: '15 min',
+            },
+        ].map((item, i) => (
+            <div key={i} className="flex items-start gap-2.5">
+                <div
+                    className={`size-6 rounded-lg flex items-center justify-center shrink-0 ${item.color}`}
+                >
+                    <item.icon className="size-3" />
+                </div>
+                <div className="flex-1 min-w-0">
+                    <p className="text-[11px] text-foreground leading-relaxed">{item.text}</p>
+                    <p className="text-[10px] text-muted-foreground">{item.time}</p>
+                </div>
+            </div>
+        ))}
+    </div>
+);
+
+/* ── Page ────────────────────────────────────────────────────────── */
+
 const LoginPage = async () => {
-    await redirectIfAuthenticated();
+    const session = await getSession();
+    if (session) redirect('/upload');
 
     return (
-        <main className="grid min-h-dvh lg:grid-cols-2">
-            <div className="flex flex-col bg-background">
-                <div className="p-6 lg:hidden">
-                    <Logo />
+        <div className="min-h-dvh flex flex-col items-center justify-center bg-background relative overflow-hidden px-4 py-12">
+            {/* Glow radial no topo */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 pointer-events-none">
+                <div className="size-150 rounded-full bg-primary/15 blur-3xl -translate-y-1/2" />
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 size-80 rounded-full bg-indigo-500/10 blur-2xl -translate-y-1/3" />
+            </div>
+
+            {/* Grade decorativa */}
+            <div className="absolute inset-0 pointer-events-none bg-grid-pattern" />
+
+            {/* Card flutuante esquerdo (xl) */}
+            <div
+                className="hidden xl:block absolute top-1/2 pointer-events-none opacity-50 select-none"
+                style={{
+                    left: 'max(2rem, calc(50% - 580px))',
+                    transform: 'translateY(-50%) rotate(-4deg)',
+                }}
+            >
+                <FloatingExamCard />
+            </div>
+
+            {/* Card flutuante direito (xl) */}
+            <div
+                className="hidden xl:block absolute top-1/2 pointer-events-none opacity-50 select-none"
+                style={{
+                    right: 'max(2rem, calc(50% - 580px))',
+                    transform: 'translateY(-50%) rotate(4deg)',
+                }}
+            >
+                <FloatingActivityCard />
+            </div>
+
+            {/* Conteúdo principal */}
+            <div className="relative z-10 w-full max-w-sm">
+                {/* Logo + badge */}
+                <div className="text-center mb-8 space-y-3 flex flex-col">
+                    <Logo className="justify-center" />
                 </div>
 
-                <div className="flex flex-1 flex-col items-center justify-center px-8 pb-16 pt-8">
-                    <div className="w-full max-w-sm">
-                        <div className="mb-8">
-                            <h1 className="text-2xl font-bold tracking-tight">
+                {/* Card de login */}
+                <div className="bg-card border border-border rounded-2xl shadow-xl overflow-hidden">
+                    {/* Stripe de cor no topo */}
+                    <div className="h-1 bg-linear-to-r from-blue-500 via-primary to-indigo-600" />
+
+                    <div className="px-8 pt-7 pb-8">
+                        <div className="mb-6">
+                            <h1 className="text-xl font-bold text-foreground">
                                 Bem-vindo de volta
                             </h1>
-                            <p className="mt-1.5 text-sm text-muted-foreground">
+                            <p className="text-sm text-muted-foreground mt-1">
                                 Entre com suas credenciais para acessar o sistema.
                             </p>
                         </div>
 
                         <LoginForm />
-
-                        <p className="mt-8 text-center text-xs text-muted-foreground/50">
-                            Acesso restrito a funcionários autorizados.
-                        </p>
                     </div>
                 </div>
-            </div>
 
-            {/* Painel esquerdo — waves + brand */}
-            <div className="relative hidden overflow-hidden bg-card lg:flex lg:flex-col lg:justify-between lg:p-12">
-                {/* Gradient base */}
-                <div className="pointer-events-none absolute inset-0 bg-linear-to-br from-primary/10 via-transparent to-primary/5" />
-
-                {/* Blob top-right */}
-                <div className="pointer-events-none absolute -right-24 -top-24 size-72 rounded-full bg-primary/10 blur-3xl" />
-
-                {/* Wave SVG layers */}
-                <svg
-                    viewBox="0 0 1200 400"
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="pointer-events-none absolute inset-x-0 bottom-0 w-full"
-                    preserveAspectRatio="none"
-                >
-                    <path
-                        d="M0,280 C200,180 400,340 600,260 C800,180 1000,320 1200,240 L1200,400 L0,400 Z"
-                        className="fill-primary/8"
-                    />
-                    <path
-                        d="M0,320 C150,240 350,360 550,300 C750,240 950,340 1200,280 L1200,400 L0,400 Z"
-                        className="fill-primary/6"
-                    />
-                    <path
-                        d="M0,360 C200,300 400,380 600,340 C800,300 1000,370 1200,330 L1200,400 L0,400 Z"
-                        className="fill-primary/10"
-                    />
-                </svg>
-
-                {/* Blob bottom-left */}
-                <div className="pointer-events-none absolute -bottom-16 -left-16 size-64 rounded-full bg-primary/8 blur-3xl" />
-
-                {/* Content */}
-                <Logo iconClassName="size-7" />
-
-                <div className="relative space-y-4">
-                    <div className="w-fit rounded-full border border-primary/20 bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary">
-                        <span className="mr-2 inline-block size-1.5 align-middle rounded-full bg-primary" />
-                        Painel da equipe
-                    </div>
-                    <h2 className="text-4xl font-bold leading-tight tracking-tight">
-                        Emita notas e gerencie
-                        <br />
-                        solicitações em
-                        <br />
-                        um só lugar.
-                    </h2>
-                    <p className="max-w-xs text-sm leading-relaxed text-muted-foreground">
-                        Controle o fluxo de notas fiscais da recepção até o envio ao paciente, com
-                        rastreabilidade total.
-                    </p>
+                {/* Links abaixo do card */}
+                <div className="flex items-center justify-between mt-6 px-1">
+                    <Link
+                        href="/"
+                        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                        <ArrowLeft className="size-3.5" />
+                        Voltar ao site
+                    </Link>
+                    <p className="text-xs text-muted-foreground">© 2026 MeuExame</p>
                 </div>
             </div>
-
-            {/* Painel direito — formulário */}
-        </main>
+        </div>
     );
 };
 

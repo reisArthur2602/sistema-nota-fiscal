@@ -1,86 +1,96 @@
+'use client';
+
 import { createColumnHelper } from '@tanstack/react-table';
-import { AcaoLog } from '@/generated/prisma/enums';
 
 import { Badge } from '@/components/ui/badge';
 
 export type LogRow = {
     id: string;
-    usuarioNome: string;
-    usuarioLogin: string;
-    acao: AcaoLog;
-    detalhes: string;
-    criadoEm: Date;
+    tipo: string;
+    ip: string | null;
+    detalhes: unknown;
+    criadoEm: Date | string;
+    usuario: { nome: string } | null;
 };
 
-const acaoConfig: Record<AcaoLog, { label: string; className: string }> = {
-    LOGIN: { label: 'Login', className: 'border-border bg-transparent text-muted-foreground' },
-    LOGOUT: { label: 'Logout', className: 'border-border bg-transparent text-muted-foreground' },
-    SOLICITACAO_CRIADA: {
-        label: 'Solicitação criada',
-        className: 'border-blue-500/20 bg-blue-500/10 text-blue-600 dark:text-blue-400',
-    },
-    SOLICITACAO_EMITIDA: {
-        label: 'Nota emitida',
-        className: 'border-green-500/20 bg-green-500/10 text-green-600 dark:text-green-400',
-    },
-    NOTA_ENVIADA: {
-        label: 'Nota enviada',
-        className: 'border-green-500/20 bg-green-500/10 text-green-600 dark:text-green-400',
-    },
-    USUARIO_CRIADO: {
-        label: 'Usuário criado',
-        className: 'border-yellow-500/20 bg-yellow-500/10 text-yellow-600 dark:text-yellow-400',
-    },
-    USUARIO_EDITADO: {
-        label: 'Usuário editado',
-        className: 'border-yellow-500/20 bg-yellow-500/10 text-yellow-600 dark:text-yellow-400',
-    },
-    USUARIO_DESATIVADO: {
-        label: 'Usuário desativado',
-        className: 'border-destructive/20 bg-destructive/10 text-destructive',
-    },
+const TIPO_CONFIG: Record<string, { label: string; className: string }> = {
+    LOGIN: { label: 'Login', className: 'bg-blue-50 text-blue-700 border-blue-200' },
+    LOGOUT: { label: 'Logout', className: 'bg-slate-50 text-slate-600 border-slate-200' },
+    UPLOAD_EXAME: { label: 'Upload de exame', className: 'bg-primary/10 text-primary border-primary/20' },
+    REATIVAR_EXAME: { label: 'Reativação', className: 'bg-green-50 text-green-700 border-green-200' },
+    INATIVAR_EXAME: { label: 'Inativação', className: 'bg-red-50 text-red-700 border-red-200' },
+    DOWNLOAD_RESULTADO: { label: 'Download', className: 'bg-purple-50 text-purple-700 border-purple-200' },
+    CRIAR_USUARIO: { label: 'Criar usuário', className: 'bg-primary/10 text-primary border-primary/20' },
+    EDITAR_USUARIO: { label: 'Editar usuário', className: 'bg-orange-50 text-orange-700 border-orange-200' },
+    ATIVAR_USUARIO: { label: 'Ativar usuário', className: 'bg-green-50 text-green-700 border-green-200' },
+    INATIVAR_USUARIO: { label: 'Inativar usuário', className: 'bg-red-50 text-red-700 border-red-200' },
 };
 
-const formatDateTime = (date: Date) =>
+const formatDateTime = (date: Date | string) =>
     new Date(date).toLocaleString('pt-BR', {
         day: '2-digit',
         month: '2-digit',
         year: 'numeric',
         hour: '2-digit',
         minute: '2-digit',
+        timeZone: 'America/Sao_Paulo',
     });
 
 const columnHelper = createColumnHelper<LogRow>();
 
 export const auditoriaColumns = [
     columnHelper.accessor('criadoEm', {
-        header: 'Data / Hora',
+        header: 'Data / hora',
         cell: (info) => (
-            <span className="whitespace-nowrap text-sm text-muted-foreground">
+            <span className="text-sm text-muted-foreground whitespace-nowrap font-mono">
                 {formatDateTime(info.getValue())}
             </span>
         ),
     }),
-    columnHelper.accessor('usuarioNome', {
-        header: 'Usuário',
-        cell: (info) => (
-            <>
-                <p className="font-medium">{info.getValue()}</p>
-                <p className="text-xs text-muted-foreground">@{info.row.original.usuarioLogin}</p>
-            </>
-        ),
-    }),
-    columnHelper.accessor('acao', {
+    columnHelper.accessor('tipo', {
         header: 'Ação',
         cell: (info) => {
-            const cfg = acaoConfig[info.getValue()];
-            return <Badge className={cfg.className}>{cfg.label}</Badge>;
+            const config = TIPO_CONFIG[info.getValue()];
+            return (
+                <Badge
+                    variant="outline"
+                    className={config?.className ?? 'bg-muted text-muted-foreground'}
+                >
+                    {config?.label ?? info.getValue()}
+                </Badge>
+            );
         },
+    }),
+    columnHelper.accessor('usuario', {
+        header: 'Usuário',
+        cell: (info) => (
+            <span className="text-sm text-foreground">
+                {info.getValue()?.nome ?? <span className="text-muted-foreground">—</span>}
+            </span>
+        ),
+    }),
+    columnHelper.accessor('ip', {
+        header: 'IP',
+        cell: (info) => (
+            <span className="text-xs text-muted-foreground font-mono">
+                {info.getValue() ?? '—'}
+            </span>
+        ),
     }),
     columnHelper.accessor('detalhes', {
         header: 'Detalhes',
-        cell: (info) => (
-            <span className="text-sm text-muted-foreground">{info.getValue()}</span>
-        ),
+        cell: (info) => {
+            const raw = info.getValue();
+            if (!raw) return <span className="text-muted-foreground text-sm">—</span>;
+            const text = JSON.stringify(raw);
+            return (
+                <span
+                    className="text-xs text-muted-foreground font-mono max-w-xs truncate block"
+                    title={text}
+                >
+                    {text.length > 60 ? text.slice(0, 60) + '…' : text}
+                </span>
+            );
+        },
     }),
 ];

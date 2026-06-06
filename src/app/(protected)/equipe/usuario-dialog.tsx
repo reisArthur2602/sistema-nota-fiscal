@@ -1,23 +1,22 @@
 'use client';
 
+import { type PropsWithChildren, useEffect, useRef, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { type PropsWithChildren, useState } from 'react';
-import { Controller, useForm } from 'react-hook-form';
-import { toast } from 'sonner';
+import { useMutation } from '@tanstack/react-query';
+import { useRouter } from 'next/navigation';
+import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
-    DialogClose,
     DialogContent,
     DialogDescription,
-    DialogFooter,
     DialogHeader,
     DialogTitle,
     DialogTrigger,
 } from '@/components/ui/dialog';
-import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import {
     Select,
@@ -26,176 +25,252 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { Spinner } from '@/components/ui/spinner';
 
-import { criarUsuario, editarUsuario } from './actions';
-import type { UsuarioRow } from './equipe-table';
+import { criarUsuarioAction, editarUsuarioAction } from './actions';
 
-const usuarioSchema = z
-    .object({
-        nome: z.string().min(1, 'Nome é obrigatório.'),
-        usuario: z.string().min(3, 'Usuário deve ter no mínimo 3 caracteres.'),
-        senha: z.string().optional(),
-        confirmarSenha: z.string().optional(),
-        role: z.enum(['SUPER_ADMIN', 'RECEPCAO', 'EMISSOR']),
+export type UsuarioEditData = {
+    id: string;
+    nome: string;
+    usuario: string;
+    role: 'SUPER_ADMIN' | 'LAUDO';
+};
+
+type FormData = {
+    nome: string;
+    usuario: string;
+    role: 'SUPER_ADMIN' | 'LAUDO';
+    senha: string;
+    confirmarSenha: string;
+};
+
+const slugify = (str: string) =>
+    str
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/\p{M}/gu, '')
+        .replace(/\s+/g, '.')
+        .replace(/[^a-z0-9._-]/g, '')
+        .replace(/\.{2,}/g, '.')
+        .replace(/^[._-]+|[._-]+$/g, '');
+
+const baseSchema = z.object({
+    nome: z.string().min(2, 'Nome deve ter ao menos 2 caracteres.').max(80, 'Nome muito longo.'),
+    usuario: z
+        .string()
+        .min(3, 'Usuário deve ter ao menos 3 caracteres.')
+        .max(30, 'Usuário muito longo.')
+        .regex(/^[a-z0-9._-]+$/, 'Apenas letras minúsculas, números, ponto e hífen.'),
+    role: z.enum(['SUPER_ADMIN', 'LAUDO']),
+});
+
+const createSchema = baseSchema
+    .extend({
+        senha: z.string().min(6, 'Senha deve ter ao menos 6 caracteres.'),
+        confirmarSenha: z.string().min(1, 'Confirme a senha.'),
     })
-    .superRefine((data, ctx) => {
-        if (data.senha && data.senha !== data.confirmarSenha) {
-            ctx.addIssue({
-                code: 'custom',
-                message: 'As senhas não coincidem.',
-                path: ['confirmarSenha'],
-            });
-        }
+    .refine((data) => data.senha === data.confirmarSenha, {
+        message: 'As senhas não coincidem.',
+        path: ['confirmarSenha'],
     });
 
-type UsuarioFormData = z.infer<typeof usuarioSchema>;
+const editSchema = baseSchema
+    .extend({
+        senha: z
+            .string()
+            .refine((v) => v === '' || v.length >= 6, 'Senha deve ter ao menos 6 caracteres.'),
+        confirmarSenha: z.string(),
+    })
+    .refine((data) => data.senha === data.confirmarSenha, {
+        message: 'As senhas não coincidem.',
+        path: ['confirmarSenha'],
+    });
 
-type Props = PropsWithChildren<{
-    usuario?: UsuarioRow;
-}>;
-
-export const UsuarioDialog = ({ children, usuario }: Props) => {
+export const UsuarioDialog = ({
+    children,
+    usuario,
+}: PropsWithChildren<{ usuario?: UsuarioEditData }>) => {
     const [open, setOpen] = useState(false);
+    const router = useRouter();
+    const isEdit = !!usuario;
 
-    const editando = !!usuario;
+    const autoGen = useRef(!isEdit);
 
-    const defaultValues = {
-        nome: usuario?.nome ?? '',
-        usuario: usuario?.usuario ?? '',
-        senha: '',
-        confirmarSenha: '',
-        role: (usuario?.role ?? 'RECEPCAO') as UsuarioFormData['role'],
-    };
+    const form = useForm<FormData>({
+        resolver: zodResolver(isEdit ? editSchema : createSchema),
+        defaultValues: {
+            nome: usuario?.nome ?? '',
+            usuario: usuario?.usuario ?? '',
+            role: usuario?.role ?? 'LAUDO',
+            senha: '',
+            confirmarSenha: '',
+        },
+    });
 
-    const form = useForm<UsuarioFormData>({
-        resolver: zodResolver(usuarioSchema),
-        defaultValues,
+    const nomeValue = form.watch('nome');
+
+    useEffect(() => {
+        if (!isEdit && autoGen.current) {
+            form.setValue('usuario', slugify(nomeValue), {
+                shouldValidate: form.formState.isSubmitted,
+            });
+        }
+    }, [nomeValue, form, isEdit]);
+
+    const { onChange: onUsuarioChange, ...usuarioRegister } = form.register('usuario');
+
+    const mutation = useMutation({
+        mutationFn: async (data: FormData) => {
+            if (isEdit) {
+                return editarUsuarioAction(usuario.id, {
+                    nome: data.nome,
+                    usuario: data.usuario,
+                    role: data.role,
+                    senha: data.senha || undefined,
+                });
+            }
+            return criarUsuarioAction({
+                nome: data.nome,
+                usuario: data.usuario,
+                role: data.role,
+                senha: data.senha,
+            });
+        },
+        onSuccess: (result) => {
+            if (result.success) {
+                setOpen(false);
+                router.refresh();
+            }
+        },
     });
 
     const handleOpenChange = (v: boolean) => {
-        if (!v) form.reset(defaultValues);
         setOpen(v);
+        if (!v) {
+            setTimeout(() => {
+                autoGen.current = !isEdit;
+                form.reset({
+                    nome: usuario?.nome ?? '',
+                    usuario: usuario?.usuario ?? '',
+                    role: usuario?.role ?? 'LAUDO',
+                    senha: '',
+                    confirmarSenha: '',
+                });
+                mutation.reset();
+            }, 200);
+        }
     };
 
-    const onSubmit = async (data: UsuarioFormData) => {
-        if (!editando && (!data.senha || data.senha.length < 6)) {
-            form.setError('senha', { message: 'A senha deve ter no mínimo 6 caracteres.' });
-            return;
-        }
-
-        const { confirmarSenha: _, ...inputData } = data;
-
-        const resultado = editando
-            ? await editarUsuario(usuario.id, inputData)
-            : await criarUsuario(inputData);
-
-        if (!resultado.success) {
-            toast.error(resultado.message);
-            return;
-        }
-
-        toast.success(resultado.message);
-        setOpen(false);
-    };
+    const errorMessage =
+        mutation.data && !mutation.data.success ? mutation.data.message : null;
 
     return (
         <Dialog open={open} onOpenChange={handleOpenChange}>
             <DialogTrigger asChild>{children}</DialogTrigger>
+            <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                    <DialogTitle>{isEdit ? 'Editar usuário' : 'Novo usuário'}</DialogTitle>
+                    <DialogDescription>
+                        {isEdit
+                            ? 'Atualize os dados. Deixe a senha em branco para não alterá-la.'
+                            : 'Preencha os dados para criar um novo usuário.'}
+                    </DialogDescription>
+                </DialogHeader>
 
-            <DialogContent className="sm:max-w-md">
-                <form onSubmit={form.handleSubmit(onSubmit)}>
-                    <DialogHeader>
-                        <DialogTitle>{editando ? 'Editar usuário' : 'Novo usuário'}</DialogTitle>
-                        <DialogDescription>
-                            {editando
-                                ? 'Atualize os dados do usuário.'
-                                : 'Preencha os dados para criar um novo usuário.'}
-                        </DialogDescription>
-                    </DialogHeader>
-
-                    <FieldGroup className="py-4">
+                <form
+                    onSubmit={form.handleSubmit((d) => mutation.mutate(d))}
+                    className="space-y-5"
+                >
+                    <FieldGroup>
+                        {/* Nome — linha inteira */}
                         <Field>
-                            <FieldLabel htmlFor="nome">Nome</FieldLabel>
+                            <FieldLabel htmlFor="u-nome">Nome</FieldLabel>
                             <Input
-                                id="nome"
+                                id="u-nome"
                                 placeholder="Nome completo"
                                 {...form.register('nome')}
                             />
                             <FieldError errors={[form.formState.errors.nome]} />
                         </Field>
 
-                        <Field>
-                            <FieldLabel htmlFor="usuario">Nome de usuário</FieldLabel>
-                            <Input
-                                id="usuario"
-                                type="text"
-                                placeholder="nome.sobrenome"
-                                {...form.register('usuario')}
-                            />
-                            <FieldError errors={[form.formState.errors.usuario]} />
-                        </Field>
+                        {/* Usuário + Perfil — 2 colunas */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <Field>
+                                <FieldLabel htmlFor="u-usuario">Usuário</FieldLabel>
+                                <Input
+                                    id="u-usuario"
+                                    placeholder="Ex: joao.silva"
+                                    {...usuarioRegister}
+                                    onChange={(e) => {
+                                        autoGen.current = false;
+                                        void onUsuarioChange(e);
+                                    }}
+                                />
+                                <FieldError errors={[form.formState.errors.usuario]} />
+                            </Field>
 
-                        <Field>
-                            <FieldLabel htmlFor="senha">Senha</FieldLabel>
-                            <Input
-                                id="senha"
-                                type="password"
-                                placeholder="••••••••"
-                                {...form.register('senha')}
-                            />
-                            {editando && (
-                                <FieldDescription>
-                                    Deixe em branco para não alterar.
-                                </FieldDescription>
-                            )}
-                            <FieldError errors={[form.formState.errors.senha]} />
-                        </Field>
+                            <Field>
+                                <FieldLabel htmlFor="u-role">Perfil</FieldLabel>
+                                <Select
+                                    value={form.watch('role')}
+                                    onValueChange={(v) =>
+                                        form.setValue('role', v as 'SUPER_ADMIN' | 'LAUDO', {
+                                            shouldValidate: true,
+                                        })
+                                    }
+                                >
+                                    <SelectTrigger id="u-role">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="LAUDO">Laudo</SelectItem>
+                                        <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <FieldError errors={[form.formState.errors.role]} />
+                            </Field>
+                        </div>
 
-                        <Field>
-                            <FieldLabel htmlFor="confirmarSenha">Confirmar senha</FieldLabel>
-                            <Input
-                                id="confirmarSenha"
-                                type="password"
-                                placeholder="••••••••"
-                                {...form.register('confirmarSenha')}
-                            />
-                            <FieldError errors={[form.formState.errors.confirmarSenha]} />
-                        </Field>
+                        {/* Senha + Confirmar — 2 colunas */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <Field>
+                                <FieldLabel htmlFor="u-senha">
+                                    {isEdit ? 'Nova senha' : 'Senha'}
+                                </FieldLabel>
+                                <Input
+                                    id="u-senha"
+                                    type="password"
+                                    placeholder={isEdit ? 'Opcional' : 'Mínimo 6 caracteres'}
+                                    {...form.register('senha')}
+                                />
+                                <FieldError errors={[form.formState.errors.senha]} />
+                            </Field>
 
-                        <Field>
-                            <FieldLabel htmlFor="role">Perfil</FieldLabel>
-                            <Controller
-                                control={form.control}
-                                name="role"
-                                render={({ field }) => (
-                                    <Select value={field.value} onValueChange={field.onChange}>
-                                        <SelectTrigger id="role" className="w-full">
-                                            <SelectValue placeholder="Selecione um perfil" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
-                                            <SelectItem value="RECEPCAO">Recepção</SelectItem>
-                                            <SelectItem value="EMISSOR">Emissor</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                )}
-                            />
-                            <FieldError errors={[form.formState.errors.role]} />
-                        </Field>
-                    </FieldGroup>
+                            <Field>
+                                <FieldLabel htmlFor="u-confirmar-senha">
+                                    {isEdit ? 'Confirmar nova senha' : 'Confirmar senha'}
+                                </FieldLabel>
+                                <Input
+                                    id="u-confirmar-senha"
+                                    type="password"
+                                    placeholder={isEdit ? 'Opcional' : 'Repita a senha'}
+                                    {...form.register('confirmarSenha')}
+                                />
+                                <FieldError errors={[form.formState.errors.confirmarSenha]} />
+                            </Field>
+                        </div>
 
-                    <DialogFooter>
-                        <DialogClose asChild>
-                            <Button type="button" variant="outline">
-                                Cancelar
-                            </Button>
-                        </DialogClose>
-                        <Button type="submit" disabled={form.formState.isSubmitting}>
-                            {form.formState.isSubmitting && <Spinner />}
-                            {form.formState.isSubmitting ? 'Salvando...' : 'Salvar'}
+                        {errorMessage && (
+                            <p className="text-sm text-destructive">{errorMessage}</p>
+                        )}
+
+                        <Button type="submit" className="w-full" disabled={mutation.isPending}>
+                            {mutation.isPending
+                                ? 'Salvando...'
+                                : isEdit
+                                  ? 'Salvar alterações'
+                                  : 'Criar usuário'}
                         </Button>
-                    </DialogFooter>
+                    </FieldGroup>
                 </form>
             </DialogContent>
         </Dialog>

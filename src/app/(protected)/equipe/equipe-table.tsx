@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import {
     flexRender,
     getCoreRowModel,
@@ -9,8 +10,7 @@ import {
     type ColumnFiltersState,
     type FilterFn,
 } from '@tanstack/react-table';
-import { ChevronLeft, ChevronRight, Plus, Search } from 'lucide-react';
-import { useState } from 'react';
+import { ChevronLeft, ChevronRight, Search } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,19 +29,14 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import { PER_PAGE } from '@/constants';
-import { cn } from '@/lib/utils';
 
 import { equipeColumns, type UsuarioRow } from './equipe-columns';
-import { UsuarioDialog } from './usuario-dialog';
 
-export type { UsuarioRow };
-
-const globalFilterFn: FilterFn<UsuarioRow> = (row, _columnId, filterValue: string) => {
-    const s = filterValue.toLowerCase();
+const globalFilterFn: FilterFn<UsuarioRow> = (row, _, filterValue: string) => {
+    const q = filterValue.toLowerCase();
     return (
-        row.original.nome.toLowerCase().includes(s) ||
-        row.original.usuario.toLowerCase().includes(s)
+        row.original.nome.toLowerCase().includes(q) ||
+        row.original.usuario.toLowerCase().includes(q)
     );
 };
 
@@ -60,120 +55,104 @@ export const EquipeTable = ({ usuarios }: { usuarios: UsuarioRow[] }) => {
         getCoreRowModel: getCoreRowModel(),
         getFilteredRowModel: getFilteredRowModel(),
         getPaginationRowModel: getPaginationRowModel(),
-        initialState: { pagination: { pageSize: PER_PAGE } },
+        initialState: { pagination: { pageSize: 10 } },
     });
 
-    const handleSearch = (e: React.SyntheticEvent) => {
+    const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
         setGlobalFilter(searchInput);
     };
 
-    const getColumnFilter = (id: string) =>
-        (columnFilters.find((f) => f.id === id)?.value as string) ?? 'todos';
-
-    const setColumnFilter = (id: string, value: string) =>
+    const setRoleFilter = (value: string) => {
         setColumnFilters((prev) => {
-            const sem = prev.filter((f) => f.id !== id);
-            return value === 'todos' ? sem : [...sem, { id, value }];
+            const without = prev.filter((f) => f.id !== 'role');
+            return value === 'todos' ? without : [...without, { id: 'role', value }];
         });
+    };
+
+    const setStatusFilter = (value: string) => {
+        setColumnFilters((prev) => {
+            const without = prev.filter((f) => f.id !== 'ativo');
+            return value === 'todos' ? without : [...without, { id: 'ativo', value }];
+        });
+    };
+
+    const roleFilter =
+        (columnFilters.find((f) => f.id === 'role')?.value as string) ?? 'todos';
+    const statusFilter =
+        (columnFilters.find((f) => f.id === 'ativo')?.value as string) ?? 'todos';
 
     const { pageIndex } = table.getState().pagination;
-    const pageSize = table.getState().pagination.pageSize;
-    const totalFiltrado = table.getFilteredRowModel().rows.length;
-    const inicio = pageIndex * pageSize + 1;
-    const fim = Math.min((pageIndex + 1) * pageSize, totalFiltrado);
-    const temFiltro = globalFilter || columnFilters.length > 0;
+    const totalFiltered = table.getFilteredRowModel().rows.length;
 
     return (
         <div className="space-y-4">
-            <div className="flex flex-wrap items-end justify-between gap-2">
-                <div className="flex flex-wrap items-end gap-2">
-                    <form onSubmit={handleSearch} className="flex gap-2">
-                        <Input
-                            placeholder="Buscar por nome ou usuário..."
-                            value={searchInput}
-                            onChange={(e) => setSearchInput(e.target.value)}
-                            className="w-56"
-                        />
-                        <Button type="submit" variant="outline">
-                            <Search className="size-4" />
-                            Buscar
-                        </Button>
-                    </form>
-
-                    <Select
-                        value={getColumnFilter('role')}
-                        onValueChange={(v) => setColumnFilter('role', v)}
-                    >
-                        <SelectTrigger className="w-40">
-                            <SelectValue placeholder="Todos os perfis" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="todos">Todos os perfis</SelectItem>
-                            <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
-                            <SelectItem value="RECEPCAO">Recepção</SelectItem>
-                            <SelectItem value="EMISSOR">Emissor</SelectItem>
-                        </SelectContent>
-                    </Select>
-
-                    <Select
-                        value={getColumnFilter('ativo')}
-                        onValueChange={(v) => setColumnFilter('ativo', v)}
-                    >
-                        <SelectTrigger className="w-36">
-                            <SelectValue placeholder="Situação" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="todos">Todas</SelectItem>
-                            <SelectItem value="ativo">Ativo</SelectItem>
-                            <SelectItem value="inativo">Inativo</SelectItem>
-                        </SelectContent>
-                    </Select>
-
-                    {temFiltro && (
-                        <Button
-                            variant="ghost"
-                            onClick={() => {
-                                setGlobalFilter('');
-                                setSearchInput('');
-                                setColumnFilters([]);
-                            }}
-                        >
-                            Limpar
-                        </Button>
-                    )}
+            <form onSubmit={handleSearch} className="flex items-center gap-2 flex-wrap">
+                <div className="relative flex-1 min-w-52">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
+                    <Input
+                        placeholder="Nome ou usuário..."
+                        className="pl-9"
+                        value={searchInput}
+                        onChange={(e) => setSearchInput(e.target.value)}
+                    />
                 </div>
 
-                <UsuarioDialog>
-                    <Button>
-                        <Plus className="size-4" />
-                        Novo usuário
-                    </Button>
-                </UsuarioDialog>
-            </div>
+                <Select value={roleFilter} onValueChange={setRoleFilter}>
+                    <SelectTrigger className="w-40">
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="todos">Todos os perfis</SelectItem>
+                        <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
+                        <SelectItem value="LAUDO">Laudo</SelectItem>
+                    </SelectContent>
+                </Select>
 
-            <div className="overflow-hidden rounded-2xl border bg-card">
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="w-32">
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="todos">Todos</SelectItem>
+                        <SelectItem value="ativo">Ativos</SelectItem>
+                        <SelectItem value="inativo">Inativos</SelectItem>
+                    </SelectContent>
+                </Select>
+
+                <Button type="submit" variant="secondary" size="sm">
+                    Buscar
+                </Button>
+            </form>
+
+            <div className="rounded-xl border border-border overflow-hidden">
                 <Table>
-                    <TableHeader>
+                    <TableHeader className="bg-muted/30">
                         {table.getHeaderGroups().map((headerGroup) => (
-                            <TableRow key={headerGroup.id}>
+                            <TableRow
+                                key={headerGroup.id}
+                                className="hover:bg-transparent border-b border-border"
+                            >
                                 {headerGroup.headers.map((header) => (
                                     <TableHead key={header.id}>
-                                        {flexRender(
-                                            header.column.columnDef.header,
-                                            header.getContext()
-                                        )}
+                                        {header.isPlaceholder
+                                            ? null
+                                            : flexRender(
+                                                  header.column.columnDef.header,
+                                                  header.getContext()
+                                              )}
                                     </TableHead>
                                 ))}
                             </TableRow>
                         ))}
                     </TableHeader>
+
                     <TableBody>
                         {table.getRowModel().rows.length === 0 ? (
                             <TableRow>
                                 <TableCell
                                     colSpan={equipeColumns.length}
-                                    className="h-24 text-center text-sm text-muted-foreground"
+                                    className="text-center py-16 text-muted-foreground"
                                 >
                                     Nenhum usuário encontrado.
                                 </TableCell>
@@ -196,39 +175,34 @@ export const EquipeTable = ({ usuarios }: { usuarios: UsuarioRow[] }) => {
                 </Table>
             </div>
 
-            {table.getPageCount() > 1 && (
-                <div className="flex items-center justify-between text-sm text-muted-foreground">
-                    <p>
-                        {inicio}–{fim} de {totalFiltrado} registro
-                        {totalFiltrado !== 1 ? 's' : ''}
-                    </p>
-                    <div className="flex items-center gap-1">
-                        <Button
-                            variant="outline"
-                            size="icon-sm"
-                            onClick={() => table.previousPage()}
-                            className={cn(
-                                !table.getCanPreviousPage() && 'pointer-events-none opacity-50'
-                            )}
-                        >
-                            <ChevronLeft className="size-4" />
-                        </Button>
-                        <span className="min-w-16 text-center text-xs">
-                            {pageIndex + 1} / {table.getPageCount()}
-                        </span>
-                        <Button
-                            variant="outline"
-                            size="icon-sm"
-                            onClick={() => table.nextPage()}
-                            className={cn(
-                                !table.getCanNextPage() && 'pointer-events-none opacity-50'
-                            )}
-                        >
-                            <ChevronRight className="size-4" />
-                        </Button>
-                    </div>
+            <div className="flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">
+                    {totalFiltered} usuário{totalFiltered !== 1 ? 's' : ''} encontrado
+                    {totalFiltered !== 1 ? 's' : ''}
+                </p>
+
+                <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">
+                        Página {pageIndex + 1} de {table.getPageCount() || 1}
+                    </span>
+                    <Button
+                        variant="outline"
+                        size="icon-sm"
+                        disabled={!table.getCanPreviousPage()}
+                        onClick={() => table.previousPage()}
+                    >
+                        <ChevronLeft className="size-4" />
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="icon-sm"
+                        disabled={!table.getCanNextPage()}
+                        onClick={() => table.nextPage()}
+                    >
+                        <ChevronRight className="size-4" />
+                    </Button>
                 </div>
-            )}
+            </div>
         </div>
     );
 };

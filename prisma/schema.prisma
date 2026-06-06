@@ -9,25 +9,7 @@ datasource db {
 
 enum Role {
     SUPER_ADMIN
-    RECEPCAO
-    EMISSOR
-}
-
-enum StatusSolicitacao {
-    PENDENTE
-    EMITIDA
-    ENVIADA_AO_PACIENTE
-}
-
-enum AcaoLog {
-    LOGIN
-    LOGOUT
-    SOLICITACAO_CRIADA
-    SOLICITACAO_EMITIDA
-    NOTA_ENVIADA
-    USUARIO_CRIADO
-    USUARIO_EDITADO
-    USUARIO_DESATIVADO
+    LAUDO
 }
 
 model Usuario {
@@ -40,37 +22,37 @@ model Usuario {
     criadoEm     DateTime @default(now())
     atualizadoEm DateTime @updatedAt
 
-    solicitacoes Solicitacao[]
-    logs         Log[]
+    exames Exame[]
+    logs   Log[]
 }
 
-model Solicitacao {
-    id            String            @id @default(cuid())
-    idRegistro    String
-    nome          String
-    cpf           String
-    endereco      String
-    especialidade String
-    valor         String
-    data          DateTime
-    email         String            @default("")
-    telefone      String            @default("")
-    status        StatusSolicitacao @default(PENDENTE)
-    criadoEm      DateTime          @default(now())
-    atualizadoEm  DateTime          @updatedAt
-
-    criadoPor   Usuario @relation(fields: [criadoPorId], references: [id])
-    criadoPorId String
+model Exame {
+    id             String   @id @default(cuid())
+    cpf            String
+    nomePaciente   String
+    telefone       String?
+    protocolo      String   @unique
+    caminhoArquivo String
+    fonte          String   @default("local")
+    ativo          Boolean  @default(true)
+    criadoPorId    String
+    criadoPor      Usuario  @relation(fields: [criadoPorId], references: [id])
+    criadoEm      DateTime @default(now())
+    atualizadoEm  DateTime @updatedAt
 }
 
 model Log {
-    id           String   @id @default(cuid())
-    usuarioNome  String
-    usuarioLogin String
-    acao         AcaoLog
-    detalhes     String
-    criadoEm     DateTime @default(now())
+    id        String   @id @default(cuid())
+    tipo      String
+    detalhes  Json?
+    ip        String?
+    usuarioId String?
+    usuario   Usuario? @relation(fields: [usuarioId], references: [id])
+    criadoEm DateTime @default(now())
+}
 
-    usuario   Usuario @relation(fields: [usuarioId], references: [id])
-    usuarioId String
+model Configuracao {
+    chave        String   @id
+    valor        Json?
+    atualizadoEm DateTime @updatedAt
 }

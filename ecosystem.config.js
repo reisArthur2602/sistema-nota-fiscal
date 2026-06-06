@@ -1,7 +1,7 @@
 module.exports = {
     apps: [
         {
-            name: 'notafacil',
+            name: 'meuexame',
             script: 'node_modules/.bin/next',
             args: 'start',
             instances: 'max',

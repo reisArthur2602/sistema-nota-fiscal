@@ -3,7 +3,6 @@
 import { AlertTriangle } from 'lucide-react';
 import { useEffect } from 'react';
 
-import { Logo } from '@/components/logo';
 import { Button } from '@/components/ui/button';
 
 type Props = {
@@ -18,9 +17,7 @@ const ErrorPage = ({ error, reset }: Props) => {
 
     return (
         <div className="flex min-h-dvh flex-col bg-background">
-            <header className="p-6">
-                <Logo />
-            </header>
+            <header className="p-6">Logo</header>
 
             <main className="flex flex-1 flex-col items-center justify-center px-6 text-center">
                 <div className="mb-6 flex size-20 items-center justify-center rounded-2xl bg-destructive/10">

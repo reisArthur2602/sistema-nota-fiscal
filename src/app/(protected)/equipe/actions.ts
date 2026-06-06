@@ -3,116 +3,74 @@
 import bcrypt from 'bcrypt';
 import { revalidatePath } from 'next/cache';
 
-import { AcaoLog, Role } from '@/generated/prisma/enums';
+import type { Role } from '@/generated/prisma/enums';
 import prisma from '@/lib/prisma';
 import { requirePermission } from '@/utils/require-permission';
 
-import type { UsuarioRow } from './equipe-columns';
+export const listarUsuarios = async () => {
+    await requirePermission(['SUPER_ADMIN']);
+    return prisma.usuario.findMany({
+        select: { id: true, nome: true, usuario: true, role: true, ativo: true, criadoEm: true },
+        orderBy: { nome: 'asc' },
+    });
+};
 
-type UsuarioInput = {
+export const criarUsuarioAction = async (input: {
     nome: string;
     usuario: string;
-    senha?: string;
+    senha: string;
     role: Role;
-};
-
-type ActionResult = { success: boolean; message: string };
-
-export const listarUsuarios = async (): Promise<UsuarioRow[]> => {
+}) => {
     await requirePermission(['SUPER_ADMIN']);
 
-    return prisma.usuario.findMany({
-        select: { id: true, nome: true, usuario: true, role: true, ativo: true },
-        orderBy: { role: 'desc' },
-    });
-};
-
-export const criarUsuario = async (
-    input: UsuarioInput
-): Promise<ActionResult & { id?: string }> => {
-    const session = await requirePermission(['SUPER_ADMIN']);
-
     const existe = await prisma.usuario.findUnique({ where: { usuario: input.usuario } });
-    if (existe) return { success: false, message: 'Nome de usuário já está em uso.' };
+    if (existe) return { success: false, message: 'Nome de usuário já está em uso.' } as const;
 
-    const senhaHash = await bcrypt.hash(input.senha!, 12);
-
-    const criado = await prisma.usuario.create({
+    const senhaHash = await bcrypt.hash(input.senha, 10);
+    await prisma.usuario.create({
         data: { nome: input.nome, usuario: input.usuario, senhaHash, role: input.role },
-        select: { id: true, usuario: true },
-    });
-
-    await prisma.log.create({
-        data: {
-            usuarioNome: session.nome,
-            usuarioLogin: session.usuario,
-            acao: AcaoLog.USUARIO_CRIADO,
-            detalhes: `Usuário ${criado.usuario} (${input.role}) criado.`,
-            usuarioId: session.id,
-        },
     });
 
     revalidatePath('/equipe');
-    return { success: true, message: 'Usuário criado com sucesso.', id: criado.id };
+    return { success: true } as const;
 };
 
-export const editarUsuario = async (id: string, input: UsuarioInput): Promise<ActionResult> => {
-    const session = await requirePermission(['SUPER_ADMIN']);
+export const editarUsuarioAction = async (
+    id: string,
+    input: { nome: string; usuario: string; role: Role; senha?: string }
+) => {
+    await requirePermission(['SUPER_ADMIN']);
 
-    const duplicado = await prisma.usuario.findFirst({
+    const existe = await prisma.usuario.findFirst({
         where: { usuario: input.usuario, NOT: { id } },
     });
-    if (duplicado) return { success: false, message: 'Nome de usuário já está em uso.' };
+    if (existe) return { success: false, message: 'Nome de usuário já está em uso.' } as const;
 
     const data: Record<string, unknown> = {
         nome: input.nome,
         usuario: input.usuario,
         role: input.role,
     };
-
-    if (input.senha && input.senha.length >= 6) {
-        data.senhaHash = await bcrypt.hash(input.senha, 12);
+    if (input.senha && input.senha.trim()) {
+        data.senhaHash = await bcrypt.hash(input.senha, 10);
     }
 
     await prisma.usuario.update({ where: { id }, data });
-
-    await prisma.log.create({
-        data: {
-            usuarioNome: session.nome,
-            usuarioLogin: session.usuario,
-            acao: AcaoLog.USUARIO_EDITADO,
-            detalhes: `Usuário ${input.usuario} (${input.role}) atualizado.`,
-            usuarioId: session.id,
-        },
-    });
-
     revalidatePath('/equipe');
-    return { success: true, message: 'Usuário atualizado com sucesso.' };
+    return { success: true } as const;
 };
 
-export const toggleAtivo = async (id: string, ativo: boolean): Promise<ActionResult> => {
+export const toggleUsuarioAtivoAction = async (id: string, ativo: boolean) => {
     const session = await requirePermission(['SUPER_ADMIN']);
 
-    if (id === session.id) {
-        return { success: false, message: 'Você não pode desativar sua própria conta.' };
+    if (!ativo && session.id === id) {
+        return {
+            success: false,
+            message: 'Você não pode inativar seu próprio usuário.',
+        } as const;
     }
 
-    const usuario = await prisma.usuario.update({
-        where: { id },
-        data: { ativo },
-        select: { usuario: true },
-    });
-
-    await prisma.log.create({
-        data: {
-            usuarioNome: session.nome,
-            usuarioLogin: session.usuario,
-            acao: AcaoLog.USUARIO_DESATIVADO,
-            detalhes: `Usuário ${usuario.usuario} ${ativo ? 'ativado' : 'desativado'}.`,
-            usuarioId: session.id,
-        },
-    });
-
+    await prisma.usuario.update({ where: { id }, data: { ativo } });
     revalidatePath('/equipe');
-    return { success: true, message: `Usuário ${ativo ? 'ativado' : 'desativado'} com sucesso.` };
+    return { success: true } as const;
 };

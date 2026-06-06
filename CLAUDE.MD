@@ -1010,29 +1010,7 @@ export const ReactQuery = ({ children }: PropsWithChildren) => {
 
 ---
 
-# useQuery para polling
 
-Usar `refetchInterval` do `useQuery` no lugar de `setInterval` manual.
-
-```tsx
-const { data } = useQuery({
-    queryKey: ['pendentes-count'],
-    queryFn: contarPendentes,
-    refetchInterval: 8000,
-    refetchIntervalInBackground: false, // pausa quando a aba não está ativa
-});
-```
-
-Para detectar mudanças e reagir (ex: toast), usar `useEffect` com o dado como dependência:
-
-```tsx
-useEffect(() => {
-    if (total === undefined) return;
-    // comparar com ref e exibir toast
-}, [total]);
-```
-
----
 
 # Estados de carregamento e erro
 
@@ -1061,7 +1039,6 @@ Sempre que houver busca de dados, usar:
 
 - `Suspense`
 - `Skeleton` do shadcn/ui
-- `loading.tsx` quando fizer sentido no App Router
 - Componentes específicos de loading próximos da feature
 
 Não deixar telas carregando sem feedback visual.

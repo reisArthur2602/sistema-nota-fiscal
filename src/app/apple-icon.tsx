@@ -3,38 +3,44 @@ import { ImageResponse } from 'next/og';
 export const size = { width: 180, height: 180 };
 export const contentType = 'image/png';
 
-export default function AppleIcon() {
-    return new ImageResponse(
-        (
+const AppleIcon = () =>
+    new ImageResponse(
+        <div
+            style={{
+                width: 180,
+                height: 180,
+                background: 'linear-gradient(135deg, #60a5fa 0%, #3b82f6 40%, #4338ca 100%)',
+                borderRadius: 40,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                position: 'relative',
+            }}
+        >
+            {/* Inner highlight */}
             <div
                 style={{
-                    width: 180,
-                    height: 180,
+                    position: 'absolute',
+                    inset: 0,
                     borderRadius: 40,
-                    background: 'linear-gradient(135deg, #22c55e 0%, #34d399 45%, #16a34a 100%)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: '0 8px 32px rgba(34,197,94,0.45)',
+                    background: 'linear-gradient(135deg, rgba(255,255,255,0.25) 0%, transparent 60%)',
                 }}
+            />
+            {/* Activity icon */}
+            <svg
+                width="100"
+                height="100"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="white"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
             >
-                <svg
-                    width="104"
-                    height="104"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="white"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                >
-                    <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z" />
-                    <path d="M14 8H8" />
-                    <path d="M16 12H8" />
-                    <path d="M13 16H8" />
-                </svg>
-            </div>
-        ),
+                <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+            </svg>
+        </div>,
         { ...size },
     );
-}
+
+export default AppleIcon;

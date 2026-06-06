@@ -1,53 +1,35 @@
 'use server';
 
-import { PER_PAGE } from '@/constants';
-import { AcaoLog } from '@/generated/prisma/enums';
 import prisma from '@/lib/prisma';
 import { requirePermission } from '@/utils/require-permission';
 
-type FiltroLogs = {
-    usuario?: string;
-    acao?: string;
-    periodo?: string;
-    page?: number;
-};
+const PER_PAGE = 15;
 
-export const listarLogs = async ({ usuario, acao, periodo, page = 1 }: FiltroLogs = {}) => {
+export const listarLogsAction = async (params: {
+    tipo?: string;
+    usuario?: string;
+    page?: number;
+}) => {
     await requirePermission(['SUPER_ADMIN']);
 
-    const corte = (() => {
-        if (!periodo || periodo === 'todos') return undefined;
-        const data = new Date();
-        if (periodo === 'hoje') data.setHours(0, 0, 0, 0);
-        else data.setDate(data.getDate() - (periodo === '7d' ? 7 : 30));
-        return data;
-    })();
+    const { tipo, usuario, page = 1 } = params;
 
     const where = {
+        ...(tipo && { tipo }),
         ...(usuario && {
-            OR: [
-                { usuarioNome: { contains: usuario, mode: 'insensitive' as const } },
-                { usuarioLogin: { contains: usuario, mode: 'insensitive' as const } },
-            ],
+            usuario: {
+                nome: { contains: usuario, mode: 'insensitive' as const },
+            },
         }),
-        ...(acao && { acao: acao as AcaoLog }),
-        ...(corte && { criadoEm: { gte: corte } }),
     };
 
     const [items, total] = await Promise.all([
         prisma.log.findMany({
             where,
-            select: {
-                id: true,
-                usuarioNome: true,
-                usuarioLogin: true,
-                acao: true,
-                detalhes: true,
-                criadoEm: true,
-            },
-            orderBy: { criadoEm: 'desc' },
-            take: PER_PAGE,
             skip: (page - 1) * PER_PAGE,
+            take: PER_PAGE,
+            orderBy: { criadoEm: 'desc' },
+            include: { usuario: { select: { nome: true } } },
         }),
         prisma.log.count({ where }),
     ]);

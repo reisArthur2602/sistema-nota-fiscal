@@ -15,5 +15,5 @@ export const proxy = (request: NextRequest): NextResponse => {
 };
 
 export const config = {
-    matcher: ['/emissor/:path*', '/solicitacao/:path*', '/equipe/:path*', '/auditoria/:path*'],
+    matcher: ['/upload/:path*', '/equipe/:path*', '/auditoria/:path*'],
 };

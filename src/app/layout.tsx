@@ -11,7 +11,7 @@ const manrope = Manrope({
     subsets: ['latin'],
     variable: '--font-sans',
     display: 'swap',
-    weight: ['400', '500', '600', '700'],
+    weight: ['400', '500', '600', '700', '800'],
 });
 
 const geistMono = Geist_Mono({
@@ -23,23 +23,29 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
     metadataBase: new URL(process.env.NEXT_PUBLIC_URL ?? 'http://localhost:3000'),
     title: {
-        template: '%s — NotaFácil',
-        default: 'NotaFácil — Nota fiscal integrada do registro ao envio',
+        template: '%s — MeuExame',
+        default: 'MeuExame — Resultados de exames médicos online',
     },
     description:
-        'Sistema de emissão e gerenciamento de notas fiscais. Controle solicitações, emita notas e envie ao paciente em um só lugar.',
-    keywords: ['nota fiscal', 'emissão de notas', 'NF-e', 'gestão de notas fiscais', 'notafacil'],
-    authors: [{ name: 'NotaFácil' }],
-    creator: 'NotaFácil',
+        'Acesse os resultados dos seus exames médicos online com segurança e rapidez. Sem filas, sem espera — só com o link que você recebeu.',
+    keywords: [
+        'exame médico',
+        'resultado de exame',
+        'laudo médico',
+        'resultado online',
+        'exame online',
+        'laudo digital',
+    ],
+    authors: [{ name: 'MeuExame' }],
+    creator: 'MeuExame',
     alternates: {
         canonical: '/',
     },
     openGraph: {
         url: '/',
-        title: 'NotaFácil — Nota fiscal integrada do registro ao envio',
-        siteName: 'NotaFácil',
-        description:
-            'Sistema de emissão e gerenciamento de notas fiscais. Controle solicitações, emita notas e envie ao paciente em um só lugar.',
+        title: 'MeuExame — Resultados de exames médicos online',
+        siteName: 'MeuExame',
+        description: 'Acesse os resultados dos seus exames médicos online com segurança e rapidez.',
         locale: 'pt_BR',
         type: 'website',
     },
