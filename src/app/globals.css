@@ -216,6 +216,17 @@
     }
 }
 
+/* Brilho deslizante (botão de download do hero) */
+@keyframes shimmer {
+    0% {
+        transform: translateX(-100%);
+    }
+    60%,
+    100% {
+        transform: translateX(100%);
+    }
+}
+
 /* Grade decorativa que adapta cor ao tema */
 .bg-grid-pattern {
     background-image:
