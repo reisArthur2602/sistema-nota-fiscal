@@ -1,11 +1,17 @@
+const buildHeaders = (clientToken: string, json = false): Record<string, string> => ({
+    ...(json ? { 'Content-Type': 'application/json' } : {}),
+    ...(clientToken ? { 'Client-Token': clientToken } : {}),
+});
+
 export const testZapiConnection = async (
     instanceId: string,
     token: string,
+    clientToken: string
 ): Promise<{ success: boolean; message: string }> => {
     try {
         const res = await fetch(
             `https://api.z-api.io/instances/${instanceId}/token/${token}/status`,
-            { cache: 'no-store' },
+            { cache: 'no-store', headers: buildHeaders(clientToken) }
         );
 
         if (!res.ok) {
@@ -15,14 +21,15 @@ export const testZapiConnection = async (
             };
         }
 
-        const json = (await res.json()) as { value?: { status?: string } };
-        const connected = json?.value?.status === 'open';
+        const { connected } = (await res.json()) as {
+            connected: true;
+        };
 
         return {
             success: connected,
             message: connected
                 ? 'Conexão estabelecida. WhatsApp conectado.'
-                : 'Instância encontrada, mas o WhatsApp não está conectado. Escaneie o QR code no painel Z-API.',
+                : 'Credenciais inválidas ou instância não encontrada.',
         };
     } catch {
         return {
@@ -35,8 +42,9 @@ export const testZapiConnection = async (
 export const sendZapiMessage = async (
     instanceId: string,
     token: string,
+    clientToken: string,
     phone: string,
-    message: string,
+    message: string
 ): Promise<{ success: boolean; message: string }> => {
     const digits = phone.replace(/\D/g, '');
     const normalized = digits.startsWith('55') ? digits : `55${digits}`;
@@ -46,10 +54,10 @@ export const sendZapiMessage = async (
             `https://api.z-api.io/instances/${instanceId}/token/${token}/send-text`,
             {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: buildHeaders(clientToken, true),
                 body: JSON.stringify({ phone: normalized, message }),
                 cache: 'no-store',
-            },
+            }
         );
 
         if (!res.ok) {

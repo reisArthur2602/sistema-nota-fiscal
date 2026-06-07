@@ -1,13 +1,32 @@
 'use server';
 
-import fs from 'fs/promises';
-import path from 'path';
-
 import { PER_PAGE } from '@/constants';
-import { downloadFileFtp, uploadFileFtp, type FtpConnectionConfig } from '@/lib/ftp';
+import { deleteFileFtp, uploadFileFtp, type FtpConnectionConfig } from '@/lib/ftp';
 import prisma from '@/lib/prisma';
 import { sendZapiMessage } from '@/lib/zapi';
 import { getSession } from '@/utils/session';
+
+type FtpStoredConfig = {
+    host: string;
+    porta: number;
+    usuario: string;
+    senha: string;
+    caminho: string;
+    ativo: boolean;
+};
+
+const getFtpConfig = async (): Promise<FtpStoredConfig | null> => {
+    const row = await prisma.configuracao.findUnique({ where: { chave: 'ftp' } });
+    return (row?.valor as FtpStoredConfig | undefined) ?? null;
+};
+
+const toFtpConnection = (config: FtpStoredConfig): FtpConnectionConfig => ({
+    host: config.host,
+    porta: config.porta,
+    usuario: config.usuario,
+    senha: config.senha,
+    caminho: config.caminho,
+});
 
 export const listExamesAction = async (params: {
     search?: string;
@@ -20,6 +39,8 @@ export const listExamesAction = async (params: {
     const { search, status, page = 1 } = params;
 
     const where = {
+        // Perfil LAUDO só enxerga os próprios uploads.
+        ...(session.role === 'LAUDO' && { criadoPorId: session.id }),
         ...(search && {
             OR: [
                 { nomePaciente: { contains: search, mode: 'insensitive' as const } },
@@ -60,54 +81,32 @@ export const createExameAction = async (formData: FormData) => {
         return { success: false, message: 'Já existe um exame com este protocolo.' } as const;
     }
 
+    /* ── Armazenamento: somente FTP ──────────────────── */
+    const ftpConfig = await getFtpConfig();
+    if (!ftpConfig?.ativo || !ftpConfig.host) {
+        return {
+            success: false,
+            message:
+                'O servidor FTP não está configurado ou está desabilitado. Ative-o em Configurações antes de cadastrar exames.',
+        } as const;
+    }
+
     const buffer = Buffer.from(await arquivo.arrayBuffer());
     const filename = `${protocolo}_${Date.now()}.pdf`;
 
-    /* ── FTP ─────────────────────────────────────── */
-    const ftpRow = await prisma.configuracao.findUnique({ where: { chave: 'ftp' } });
-    const ftpConfig = ftpRow?.valor as {
-        host: string;
-        porta: number;
-        usuario: string;
-        senha: string;
-        caminho: string;
-        ativo: boolean;
-    } | null;
-
-    let caminhoArquivo: string;
-    let fonte: string;
-
-    if (ftpConfig?.ativo && ftpConfig.host) {
-        const ftpConn: FtpConnectionConfig = {
-            host: ftpConfig.host,
-            porta: ftpConfig.porta,
-            usuario: ftpConfig.usuario,
-            senha: ftpConfig.senha,
-            caminho: ftpConfig.caminho,
-        };
-        const upload = await uploadFileFtp(ftpConn, buffer, filename);
-        if (!upload.success) {
-            return { success: false, message: `Falha ao enviar para o FTP: ${upload.message}` } as const;
-        }
-        caminhoArquivo = upload.remotePath;
-        fonte = 'ftp';
-    } else {
-        const uploadDir = process.env.UPLOAD_DIR ?? path.join(process.cwd(), 'uploads');
-        await fs.mkdir(uploadDir, { recursive: true });
-        await fs.writeFile(path.join(uploadDir, filename), buffer);
-        caminhoArquivo = filename;
-        fonte = 'local';
+    const upload = await uploadFileFtp(toFtpConnection(ftpConfig), buffer, filename);
+    if (!upload.success) {
+        return { success: false, message: `Falha ao enviar para o FTP: ${upload.message}` } as const;
     }
 
-    /* ── Banco de dados ──────────────────────────── */
+    /* ── Banco de dados ──────────────────────────────── */
     await prisma.exame.create({
         data: {
             cpf,
             nomePaciente,
             telefone,
             protocolo,
-            caminhoArquivo,
-            fonte,
+            caminhoArquivo: upload.remotePath,
             criadoPorId: session.id,
         },
     });
@@ -116,20 +115,21 @@ export const createExameAction = async (formData: FormData) => {
         data: {
             tipo: 'UPLOAD_EXAME',
             usuarioId: session.id,
-            detalhes: { cpf, nomePaciente, protocolo, fonte },
+            detalhes: { cpf, nomePaciente, protocolo },
         },
     });
 
     const baseUrl = process.env.NEXT_PUBLIC_URL ?? 'http://localhost:3000';
     const link = `${baseUrl}/exame?c=${cpf}&p=${protocolo}`;
 
-    /* ── Z-API ───────────────────────────────────── */
+    /* ── Z-API ───────────────────────────────────────── */
     let whatsappEnviado = false;
     if (telefone) {
         const zapiRow = await prisma.configuracao.findUnique({ where: { chave: 'zapi' } });
         const zapiConfig = zapiRow?.valor as {
             instanceId: string;
             token: string;
+            clientToken: string;
             mensagem: string;
             ativo: boolean;
         } | null;
@@ -140,14 +140,20 @@ export const createExameAction = async (formData: FormData) => {
                 .replace('{protocolo}', protocolo)
                 .replace('{link}', link);
 
-            const result = await sendZapiMessage(zapiConfig.instanceId, zapiConfig.token, telefone, mensagem);
+            const result = await sendZapiMessage(
+                zapiConfig.instanceId,
+                zapiConfig.token,
+                zapiConfig.clientToken,
+                telefone,
+                mensagem,
+            );
             whatsappEnviado = result.success;
 
             await prisma.log.create({
                 data: {
                     tipo: 'WHATSAPP_ENVIADO',
                     usuarioId: session.id,
-                    detalhes: { protocolo, sucesso: result.success, mensagem: result.message },
+                    detalhes: { protocolo, sucesso: result.success },
                 },
             });
         }
@@ -156,44 +162,37 @@ export const createExameAction = async (formData: FormData) => {
     return { success: true, link, nomePaciente, protocolo, whatsappEnviado } as const;
 };
 
-export const toggleExameAtivoAction = async (id: string, ativo: boolean) => {
+export const removerExameAction = async (id: string) => {
     const session = await getSession();
-    if (!session) return { success: false } as const;
+    if (!session) return { success: false, message: 'Não autorizado.' } as const;
 
-    await prisma.exame.update({ where: { id }, data: { ativo } });
+    const exame = await prisma.exame.findUnique({ where: { id } });
+    if (!exame) return { success: false, message: 'Exame não encontrado.' } as const;
+
+    // Perfil LAUDO só pode remover os próprios uploads.
+    if (session.role === 'LAUDO' && exame.criadoPorId !== session.id) {
+        return { success: false, message: 'Você não pode remover este exame.' } as const;
+    }
+
+    // Remove o arquivo do FTP (não bloqueia a exclusão do registro em caso de falha).
+    const ftpConfig = await getFtpConfig();
+    if (ftpConfig?.host) {
+        try {
+            await deleteFileFtp(toFtpConnection(ftpConfig), exame.caminhoArquivo);
+        } catch {
+            // arquivo já inexistente ou FTP indisponível — segue removendo o registro
+        }
+    }
+
+    await prisma.exame.delete({ where: { id } });
 
     await prisma.log.create({
         data: {
-            tipo: ativo ? 'REATIVAR_EXAME' : 'INATIVAR_EXAME',
+            tipo: 'REMOVER_EXAME',
             usuarioId: session.id,
-            detalhes: { exameId: id },
+            detalhes: { protocolo: exame.protocolo, nomePaciente: exame.nomePaciente },
         },
     });
 
     return { success: true } as const;
-};
-
-export const getFileFtpAction = async (remotePath: string): Promise<Buffer | null> => {
-    const ftpRow = await prisma.configuracao.findUnique({ where: { chave: 'ftp' } });
-    const ftpConfig = ftpRow?.valor as {
-        host: string;
-        porta: number;
-        usuario: string;
-        senha: string;
-        caminho: string;
-        ativo: boolean;
-    } | null;
-
-    if (!ftpConfig?.host) return null;
-
-    return downloadFileFtp(
-        {
-            host: ftpConfig.host,
-            porta: ftpConfig.porta,
-            usuario: ftpConfig.usuario,
-            senha: ftpConfig.senha,
-            caminho: ftpConfig.caminho,
-        },
-        remotePath,
-    );
 };

@@ -13,19 +13,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-
-const TIPOS = [
-    { value: 'LOGIN', label: 'Login' },
-    { value: 'LOGOUT', label: 'Logout' },
-    { value: 'UPLOAD_EXAME', label: 'Upload de exame' },
-    { value: 'REATIVAR_EXAME', label: 'Reativação de exame' },
-    { value: 'INATIVAR_EXAME', label: 'Inativação de exame' },
-    { value: 'DOWNLOAD_RESULTADO', label: 'Download de resultado' },
-    { value: 'CRIAR_USUARIO', label: 'Criar usuário' },
-    { value: 'EDITAR_USUARIO', label: 'Editar usuário' },
-    { value: 'ATIVAR_USUARIO', label: 'Ativar usuário' },
-    { value: 'INATIVAR_USUARIO', label: 'Inativar usuário' },
-];
+import { LOG_TIPOS } from '@/utils/log-format';
 
 export const AuditoriaFilters = () => {
     const router = useRouter();
@@ -74,7 +62,7 @@ export const AuditoriaFilters = () => {
                 </SelectTrigger>
                 <SelectContent>
                     <SelectItem value="todos">Todas as ações</SelectItem>
-                    {TIPOS.map((t) => (
+                    {LOG_TIPOS.map((t) => (
                         <SelectItem key={t.value} value={t.value}>
                             {t.label}
                         </SelectItem>

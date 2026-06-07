@@ -1,7 +1,5 @@
 'use client';
 
-import { useState } from 'react';
-import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation } from '@tanstack/react-query';
 import {
@@ -15,6 +13,8 @@ import {
     Server,
     ServerOff,
 } from 'lucide-react';
+import { useState } from 'react';
+import { Controller, useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
 
@@ -28,8 +28,8 @@ import { saveFtpConfigAction, testFtpConnectionAction, type FtpConfig } from './
 
 const schema = z.object({
     host: z.string().min(1, 'Host é obrigatório.'),
-    porta: z.coerce
-        .number({ invalid_type_error: 'Porta inválida.' })
+    porta: z
+        .number('Porta inválida.')
         .int()
         .min(1)
         .max(65535, 'Porta deve estar entre 1 e 65535.'),
@@ -75,7 +75,7 @@ export const FtpForm = ({ config }: { config: FtpConfig }) => {
                         <div
                             className={cn(
                                 'size-10 rounded-xl flex items-center justify-center',
-                                ativo ? 'bg-blue-500/10' : 'bg-muted-foreground/10',
+                                ativo ? 'bg-blue-500/10' : 'bg-muted-foreground/10'
                             )}
                         >
                             {ativo ? (
@@ -89,7 +89,7 @@ export const FtpForm = ({ config }: { config: FtpConfig }) => {
                             <p className="text-xs text-muted-foreground mt-0.5">
                                 {ativo
                                     ? 'Habilitado — arquivos salvos diretamente no servidor FTP'
-                                    : 'Desabilitado — arquivos salvos localmente (UPLOAD_DIR)'}
+                                    : 'Desabilitado — o cadastro de exames ficará indisponível até habilitar'}
                             </p>
                         </div>
                     </div>
@@ -105,13 +105,13 @@ export const FtpForm = ({ config }: { config: FtpConfig }) => {
                                 onClick={() => field.onChange(!field.value)}
                                 className={cn(
                                     'relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-                                    field.value ? 'bg-primary' : 'bg-muted-foreground/30',
+                                    field.value ? 'bg-primary' : 'bg-muted-foreground/30'
                                 )}
                             >
                                 <span
                                     className={cn(
                                         'pointer-events-none inline-block size-5 transform rounded-full bg-white shadow-lg transition-transform duration-200',
-                                        field.value ? 'translate-x-5' : 'translate-x-0',
+                                        field.value ? 'translate-x-5' : 'translate-x-0'
                                     )}
                                 />
                             </button>
@@ -120,10 +120,7 @@ export const FtpForm = ({ config }: { config: FtpConfig }) => {
                 </div>
             </div>
 
-            <form
-                onSubmit={form.handleSubmit((d) => saveMutation.mutate(d))}
-                className="space-y-6"
-            >
+            <form onSubmit={form.handleSubmit((d) => saveMutation.mutate(d))} className="space-y-6">
                 {/* Servidor */}
                 <div>
                     <h3 className="text-sm font-semibold text-foreground mb-4">Conexão</h3>
@@ -148,7 +145,7 @@ export const FtpForm = ({ config }: { config: FtpConfig }) => {
                                     min={1}
                                     max={65535}
                                     placeholder="21"
-                                    {...form.register('porta')}
+                                    {...form.register('porta', { valueAsNumber: true })}
                                 />
                                 <FieldError errors={[form.formState.errors.porta]} />
                             </Field>
@@ -220,7 +217,10 @@ export const FtpForm = ({ config }: { config: FtpConfig }) => {
                                 {...form.register('caminho')}
                             />
                             <FieldDescription>
-                                Use caminhos absolutos. Ex: <code className="font-mono text-xs bg-muted px-1 rounded">/var/www/uploads/exames</code>
+                                Use caminhos absolutos. Ex:{' '}
+                                <code className="font-mono text-xs bg-muted px-1 rounded">
+                                    /var/www/uploads/exames
+                                </code>
                             </FieldDescription>
                             <FieldError errors={[form.formState.errors.caminho]} />
                         </Field>
@@ -234,7 +234,7 @@ export const FtpForm = ({ config }: { config: FtpConfig }) => {
                             'flex items-start gap-3 rounded-xl border p-4 text-sm',
                             testResult.success
                                 ? 'border-green-500/20 bg-green-500/5 text-green-400'
-                                : 'border-destructive/20 bg-destructive/5 text-destructive',
+                                : 'border-destructive/20 bg-destructive/5 text-destructive'
                         )}
                     >
                         {testResult.success ? (

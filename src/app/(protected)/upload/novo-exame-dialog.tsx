@@ -38,6 +38,15 @@ const formatCPFDisplay = (digits: string) => {
     return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9, 11)}`;
 };
 
+const formatPhoneDisplay = (digits: string) => {
+    const d = digits.slice(0, 11);
+    if (d.length === 0) return '';
+    if (d.length <= 2) return `(${d}`;
+    if (d.length <= 6) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
+    if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+    return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7, 11)}`;
+};
+
 const schema = z.object({
     cpf: z
         .string()
@@ -76,6 +85,7 @@ const ExameForm = ({ onSuccess }: { onSuccess: (result: Result) => void }) => {
     });
 
     const { ref: cpfRef } = form.register('cpf');
+    const { ref: telefoneRef } = form.register('telefone');
     const { onChange: onProtocoloChange, ...protocoloRegister } = form.register('protocolo');
     const { ref: fileRef, ...fileRegister } = form.register('arquivo');
 
@@ -159,8 +169,16 @@ const ExameForm = ({ onSuccess }: { onSuccess: (result: Result) => void }) => {
                     <Input
                         id="telefone"
                         type="tel"
+                        ref={telefoneRef}
                         placeholder="(11) 99999-9999"
-                        {...form.register('telefone')}
+                        maxLength={15}
+                        value={formatPhoneDisplay(form.watch('telefone') ?? '')}
+                        onChange={(e) => {
+                            const digits = e.target.value.replace(/\D/g, '').slice(0, 11);
+                            form.setValue('telefone', digits, {
+                                shouldValidate: form.formState.isSubmitted,
+                            });
+                        }}
                     />
                     <FieldError errors={[form.formState.errors.telefone]} />
                 </Field>

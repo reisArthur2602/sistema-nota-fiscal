@@ -21,7 +21,7 @@ export const criarUsuarioAction = async (input: {
     senha: string;
     role: Role;
 }) => {
-    await requirePermission(['SUPER_ADMIN']);
+    const session = await requirePermission(['SUPER_ADMIN']);
 
     const existe = await prisma.usuario.findUnique({ where: { usuario: input.usuario } });
     if (existe) return { success: false, message: 'Nome de usuário já está em uso.' } as const;
@@ -29,6 +29,14 @@ export const criarUsuarioAction = async (input: {
     const senhaHash = await bcrypt.hash(input.senha, 10);
     await prisma.usuario.create({
         data: { nome: input.nome, usuario: input.usuario, senhaHash, role: input.role },
+    });
+
+    await prisma.log.create({
+        data: {
+            tipo: 'CRIAR_USUARIO',
+            usuarioId: session.id,
+            detalhes: { nome: input.nome, usuario: input.usuario, role: input.role },
+        },
     });
 
     revalidatePath('/equipe');
@@ -39,7 +47,7 @@ export const editarUsuarioAction = async (
     id: string,
     input: { nome: string; usuario: string; role: Role; senha?: string }
 ) => {
-    await requirePermission(['SUPER_ADMIN']);
+    const session = await requirePermission(['SUPER_ADMIN']);
 
     const existe = await prisma.usuario.findFirst({
         where: { usuario: input.usuario, NOT: { id } },
@@ -56,6 +64,15 @@ export const editarUsuarioAction = async (
     }
 
     await prisma.usuario.update({ where: { id }, data });
+
+    await prisma.log.create({
+        data: {
+            tipo: 'EDITAR_USUARIO',
+            usuarioId: session.id,
+            detalhes: { nome: input.nome, usuario: input.usuario, role: input.role },
+        },
+    });
+
     revalidatePath('/equipe');
     return { success: true } as const;
 };
@@ -70,7 +87,16 @@ export const toggleUsuarioAtivoAction = async (id: string, ativo: boolean) => {
         } as const;
     }
 
-    await prisma.usuario.update({ where: { id }, data: { ativo } });
+    const usuario = await prisma.usuario.update({ where: { id }, data: { ativo } });
+
+    await prisma.log.create({
+        data: {
+            tipo: ativo ? 'ATIVAR_USUARIO' : 'INATIVAR_USUARIO',
+            usuarioId: session.id,
+            detalhes: { nome: usuario.nome },
+        },
+    });
+
     revalidatePath('/equipe');
     return { success: true } as const;
 };

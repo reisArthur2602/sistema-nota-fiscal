@@ -33,7 +33,6 @@ model Exame {
     telefone       String?
     protocolo      String   @unique
     caminhoArquivo String
-    fonte          String   @default("local")
     ativo          Boolean  @default(true)
     criadoPorId    String
     criadoPor      Usuario  @relation(fields: [criadoPorId], references: [id])
@@ -45,7 +44,6 @@ model Log {
     id        String   @id @default(cuid())
     tipo      String
     detalhes  Json?
-    ip        String?
     usuarioId String?
     usuario   Usuario? @relation(fields: [usuarioId], references: [id])
     criadoEm DateTime @default(now())

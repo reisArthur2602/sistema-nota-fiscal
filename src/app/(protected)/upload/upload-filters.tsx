@@ -6,35 +6,19 @@ import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
 
 export const UploadFilters = () => {
     const router = useRouter();
     const searchParams = useSearchParams();
 
-    const [local, setLocal] = useState({
-        search: searchParams.get('search') ?? '',
-        status: searchParams.get('status') ?? 'todos',
-    });
-
-    const push = (overrides: Partial<typeof local>) => {
-        const next = { ...local, ...overrides };
-        const params = new URLSearchParams();
-        if (next.search) params.set('search', next.search);
-        if (next.status && next.status !== 'todos') params.set('status', next.status);
-        params.set('page', '1');
-        router.replace(`?${params.toString()}`);
-    };
+    const [search, setSearch] = useState(searchParams.get('search') ?? '');
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        push({});
+        const params = new URLSearchParams();
+        if (search) params.set('search', search);
+        params.set('page', '1');
+        router.replace(`?${params.toString()}`);
     };
 
     return (
@@ -44,27 +28,10 @@ export const UploadFilters = () => {
                 <Input
                     placeholder="Nome, CPF ou protocolo..."
                     className="pl-9"
-                    value={local.search}
-                    onChange={(e) => setLocal((p) => ({ ...p, search: e.target.value }))}
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
                 />
             </div>
-
-            <Select
-                value={local.status}
-                onValueChange={(value) => {
-                    setLocal((p) => ({ ...p, status: value }));
-                    push({ status: value });
-                }}
-            >
-                <SelectTrigger className="w-36">
-                    <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="todos">Todos</SelectItem>
-                    <SelectItem value="ativo">Ativos</SelectItem>
-                    <SelectItem value="inativo">Inativos</SelectItem>
-                </SelectContent>
-            </Select>
 
             <Button type="submit" variant="secondary">
                 Buscar

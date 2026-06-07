@@ -12,6 +12,7 @@ const ZAPI_KEY = 'zapi';
 export type ZapiConfig = {
     instanceId: string;
     token: string;
+    clientToken: string;
     mensagem: string;
     ativo: boolean;
 };
@@ -19,6 +20,7 @@ export type ZapiConfig = {
 const ZAPI_DEFAULTS: ZapiConfig = {
     instanceId: '',
     token: '',
+    clientToken: '',
     mensagem:
         'Olá, {nome}! O resultado do seu exame (protocolo {protocolo}) está disponível. Acesse pelo link: {link}',
     ativo: false,
@@ -70,7 +72,7 @@ export const testZapiConnectionAction = async (): Promise<{
         };
     }
 
-    return testZapiConnection(config.instanceId, config.token);
+    return testZapiConnection(config.instanceId, config.token, config.clientToken);
 };
 
 /* ─── FTP ───────────────────────────────────────────────────────── */

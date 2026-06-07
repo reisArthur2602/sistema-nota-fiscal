@@ -1,9 +1,8 @@
 'use server';
 
+import { PER_PAGE } from '@/constants';
 import prisma from '@/lib/prisma';
 import { requirePermission } from '@/utils/require-permission';
-
-const PER_PAGE = 15;
 
 export const listarLogsAction = async (params: {
     tipo?: string;

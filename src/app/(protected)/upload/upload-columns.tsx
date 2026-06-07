@@ -1,10 +1,21 @@
 'use client';
 
+import { type PropsWithChildren, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { type ColumnDef } from '@tanstack/react-table';
-import { ClipboardCopy, MoreHorizontal, Power, PowerOff } from 'lucide-react';
+import { ClipboardCopy, Loader2, MoreHorizontal, Trash2 } from 'lucide-react';
 
-import { Badge } from '@/components/ui/badge';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -13,9 +24,10 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { formatCPF } from '@/utils/format-cpf';
 import { formatDate } from '@/utils/format-date';
 
-import { toggleExameAtivoAction } from './actions';
+import { removerExameAction } from './actions';
 
 export type ExameRow = {
     id: string;
@@ -27,20 +39,55 @@ export type ExameRow = {
     criadoPor: { nome: string };
 };
 
-const formatCPF = (cpf: string) =>
-    cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
-
-const ExameActionsCell = ({ exame }: { exame: ExameRow }) => {
+const RemoverExameDialog = ({ exame, children }: PropsWithChildren<{ exame: ExameRow }>) => {
+    const [open, setOpen] = useState(false);
     const queryClient = useQueryClient();
-    const baseUrl = process.env.NEXT_PUBLIC_URL ?? 'http://localhost:3000';
-    const link = `${baseUrl}/exame?c=${exame.cpf}&p=${exame.protocolo}`;
 
     const mutation = useMutation({
-        mutationFn: (ativo: boolean) => toggleExameAtivoAction(exame.id, ativo),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['exames'] });
+        mutationFn: () => removerExameAction(exame.id),
+        onSuccess: (result) => {
+            if (result.success) {
+                setOpen(false);
+                queryClient.invalidateQueries({ queryKey: ['exames'] });
+            }
         },
     });
+
+    return (
+        <AlertDialog open={open} onOpenChange={setOpen}>
+            <AlertDialogTrigger asChild>{children}</AlertDialogTrigger>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Remover exame</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        Esta ação remove permanentemente o exame de{' '}
+                        <span className="font-medium text-foreground">{exame.nomePaciente}</span>{' '}
+                        (protocolo {exame.protocolo}), excluindo o registro e o arquivo do servidor
+                        FTP. Não é possível desfazer.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel disabled={mutation.isPending}>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction
+                        onClick={(e) => {
+                            e.preventDefault();
+                            mutation.mutate();
+                        }}
+                        disabled={mutation.isPending}
+                        className="bg-destructive text-white hover:bg-destructive/90"
+                    >
+                        {mutation.isPending && <Loader2 className="size-4 animate-spin" />}
+                        {mutation.isPending ? 'Removendo...' : 'Remover'}
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+    );
+};
+
+const ExameActionsCell = ({ exame }: { exame: ExameRow }) => {
+    const baseUrl = process.env.NEXT_PUBLIC_URL ?? 'http://localhost:3000';
+    const link = `${baseUrl}/exame?c=${exame.cpf}&p=${exame.protocolo}`;
 
     const copiarLink = () => {
         navigator.clipboard.writeText(link);
@@ -49,7 +96,7 @@ const ExameActionsCell = ({ exame }: { exame: ExameRow }) => {
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon-sm" disabled={mutation.isPending}>
+                <Button variant="ghost" size="icon-sm">
                     <MoreHorizontal className="size-4" />
                 </Button>
             </DropdownMenuTrigger>
@@ -59,23 +106,15 @@ const ExameActionsCell = ({ exame }: { exame: ExameRow }) => {
                     Copiar link
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem
-                    onClick={() => mutation.mutate(!exame.ativo)}
-                    disabled={mutation.isPending}
-                    className={exame.ativo ? 'text-destructive focus:text-destructive' : ''}
-                >
-                    {exame.ativo ? (
-                        <>
-                            <PowerOff className="size-4" />
-                            Inativar
-                        </>
-                    ) : (
-                        <>
-                            <Power className="size-4" />
-                            Reativar
-                        </>
-                    )}
-                </DropdownMenuItem>
+                <RemoverExameDialog exame={exame}>
+                    <DropdownMenuItem
+                        onSelect={(e) => e.preventDefault()}
+                        className="text-destructive focus:text-destructive"
+                    >
+                        <Trash2 className="size-4" />
+                        Remover
+                    </DropdownMenuItem>
+                </RemoverExameDialog>
             </DropdownMenuContent>
         </DropdownMenu>
     );
@@ -97,9 +136,7 @@ export const uploadColumns: ColumnDef<ExameRow>[] = [
     {
         accessorKey: 'protocolo',
         header: 'Protocolo',
-        cell: ({ row }) => (
-            <span className="font-mono text-sm">{row.original.protocolo}</span>
-        ),
+        cell: ({ row }) => <span className="font-mono text-sm">{row.original.protocolo}</span>,
     },
     {
         accessorKey: 'criadoPor',
@@ -116,18 +153,6 @@ export const uploadColumns: ColumnDef<ExameRow>[] = [
                 {formatDate(row.original.criadoEm)}
             </span>
         ),
-    },
-    {
-        accessorKey: 'ativo',
-        header: 'Status',
-        cell: ({ row }) =>
-            row.original.ativo ? (
-                <Badge className="bg-green-100 text-green-700 border-green-200 hover:bg-green-100">
-                    Ativo
-                </Badge>
-            ) : (
-                <Badge variant="secondary">Inativo</Badge>
-            ),
     },
     {
         id: 'actions',

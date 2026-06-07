@@ -63,6 +63,18 @@ export const downloadFileFtp = async (
     }
 };
 
+export const deleteFileFtp = async (
+    config: FtpConnectionConfig,
+    remotePath: string,
+): Promise<void> => {
+    const client = await createClient(config);
+    try {
+        await client.remove(remotePath);
+    } finally {
+        client.close();
+    }
+};
+
 export const testFtpConnection = async (
     host: string,
     porta: number,

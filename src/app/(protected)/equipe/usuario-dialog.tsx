@@ -1,10 +1,11 @@
 'use client';
 
-import { type PropsWithChildren, useEffect, useRef, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
+import { type PropsWithChildren, useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
+import slugify from 'slugify';
 import { z } from 'zod';
 
 import { Button } from '@/components/ui/button';
@@ -43,23 +44,20 @@ type FormData = {
     confirmarSenha: string;
 };
 
-const slugify = (str: string) =>
-    str
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/\p{M}/gu, '')
-        .replace(/\s+/g, '.')
-        .replace(/[^a-z0-9._-]/g, '')
-        .replace(/\.{2,}/g, '.')
-        .replace(/^[._-]+|[._-]+$/g, '');
+const gerarUsuario = (nome: string) =>
+    slugify(nome, {
+        lower: true,
+        replacement: '.',
+        locale: 'pt',
+    });
 
 const baseSchema = z.object({
     nome: z.string().min(2, 'Nome deve ter ao menos 2 caracteres.').max(80, 'Nome muito longo.'),
     usuario: z
         .string()
         .min(3, 'Usuário deve ter ao menos 3 caracteres.')
-        .max(30, 'Usuário muito longo.')
-        .regex(/^[a-z0-9._-]+$/, 'Apenas letras minúsculas, números, ponto e hífen.'),
+        .max(30, 'Usuário muito longo.'),
+
     role: z.enum(['SUPER_ADMIN', 'LAUDO']),
 });
 
@@ -109,14 +107,10 @@ export const UsuarioDialog = ({
     const nomeValue = form.watch('nome');
 
     useEffect(() => {
-        if (!isEdit && autoGen.current) {
-            form.setValue('usuario', slugify(nomeValue), {
-                shouldValidate: form.formState.isSubmitted,
-            });
-        }
-    }, [nomeValue, form, isEdit]);
-
-    const { onChange: onUsuarioChange, ...usuarioRegister } = form.register('usuario');
+        form.setValue('usuario', gerarUsuario(nomeValue), {
+            shouldValidate: form.formState.isSubmitted,
+        });
+    }, [nomeValue, form]);
 
     const mutation = useMutation({
         mutationFn: async (data: FormData) => {
@@ -160,8 +154,7 @@ export const UsuarioDialog = ({
         }
     };
 
-    const errorMessage =
-        mutation.data && !mutation.data.success ? mutation.data.message : null;
+    const errorMessage = mutation.data && !mutation.data.success ? mutation.data.message : null;
 
     return (
         <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -176,10 +169,7 @@ export const UsuarioDialog = ({
                     </DialogDescription>
                 </DialogHeader>
 
-                <form
-                    onSubmit={form.handleSubmit((d) => mutation.mutate(d))}
-                    className="space-y-5"
-                >
+                <form onSubmit={form.handleSubmit((d) => mutation.mutate(d))} className="space-y-5">
                     <FieldGroup>
                         {/* Nome — linha inteira */}
                         <Field>
@@ -198,12 +188,12 @@ export const UsuarioDialog = ({
                                 <FieldLabel htmlFor="u-usuario">Usuário</FieldLabel>
                                 <Input
                                     id="u-usuario"
-                                    placeholder="Ex: joao.silva"
-                                    {...usuarioRegister}
-                                    onChange={(e) => {
-                                        autoGen.current = false;
-                                        void onUsuarioChange(e);
-                                    }}
+                                    placeholder="ex:. arthur.reis"
+                                    readOnly
+                                    tabIndex={-1}
+                                    aria-readonly
+                                    disabled
+                                    {...form.register('usuario')}
                                 />
                                 <FieldError errors={[form.formState.errors.usuario]} />
                             </Field>
@@ -259,9 +249,7 @@ export const UsuarioDialog = ({
                             </Field>
                         </div>
 
-                        {errorMessage && (
-                            <p className="text-sm text-destructive">{errorMessage}</p>
-                        )}
+                        {errorMessage && <p className="text-sm text-destructive">{errorMessage}</p>}
 
                         <Button type="submit" className="w-full" disabled={mutation.isPending}>
                             {mutation.isPending

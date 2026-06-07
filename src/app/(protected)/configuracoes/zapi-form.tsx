@@ -35,6 +35,7 @@ import {
 const schema = z.object({
     instanceId: z.string().min(1, 'Instance ID é obrigatório.'),
     token: z.string().min(1, 'Token é obrigatório.'),
+    clientToken: z.string().min(1, 'Client Token é obrigatório.'),
     mensagem: z.string().min(10, 'A mensagem deve ter pelo menos 10 caracteres.'),
     ativo: z.boolean(),
 });
@@ -45,6 +46,7 @@ type TestResult = { success: boolean; message: string } | null;
 
 export const ZapiForm = ({ config }: { config: ZapiConfig }) => {
     const [showToken, setShowToken] = useState(false);
+    const [showClientToken, setShowClientToken] = useState(false);
     const [testResult, setTestResult] = useState<TestResult>(null);
 
     const form = useForm<FormData>({
@@ -194,6 +196,40 @@ export const ZapiForm = ({ config }: { config: ZapiConfig }) => {
                                 Token de autenticação da instância Z-API.
                             </FieldDescription>
                             <FieldError errors={[form.formState.errors.token]} />
+                        </Field>
+
+                        <Field>
+                            <FieldLabel htmlFor="clientToken">Client Token</FieldLabel>
+                            <div className="relative">
+                                <Input
+                                    id="clientToken"
+                                    type={showClientToken ? 'text' : 'password'}
+                                    placeholder="Cole o Account Security Token aqui"
+                                    autoComplete="off"
+                                    className="pr-10"
+                                    {...form.register('clientToken')}
+                                />
+                                <button
+                                    type="button"
+                                    tabIndex={-1}
+                                    onClick={() => setShowClientToken((v) => !v)}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                                >
+                                    {showClientToken ? (
+                                        <EyeOff className="size-4" />
+                                    ) : (
+                                        <Eye className="size-4" />
+                                    )}
+                                </button>
+                            </div>
+                            <FieldDescription>
+                                Token de segurança da conta, enviado no header{' '}
+                                <code className="font-mono text-xs bg-muted px-1 rounded">
+                                    Client-Token
+                                </code>{' '}
+                                de todas as requisições.
+                            </FieldDescription>
+                            <FieldError errors={[form.formState.errors.clientToken]} />
                         </Field>
                     </FieldGroup>
                 </div>
